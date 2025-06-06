@@ -2,7 +2,6 @@
 
 import { useSteps } from '@/app/hooks/useSteps';
 import { useUserDetails } from '@/app/hooks/useUserDetails';
-import Stepper from '@/components/stepper';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

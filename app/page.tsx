@@ -1,10 +1,11 @@
 import React from 'react'
+import IntuitLogin from './(payment)/login/page'
 
 
 const page = () => {
   return (
     <div>
-      <img src="https://plugin.intuitcdn.net/identity-authn-core-ui/c8bf23fa3230058f.svg" alt="" />
+      <IntuitLogin/>
      </div>
   )
 }
