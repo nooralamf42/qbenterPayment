@@ -8,13 +8,13 @@ const page = () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email: 'bert.gray@mail.com',
-              first_name: 'Bert',
-              last_name: 'Gray',
-              country_code: 'ie',
-              tos_acceptance: {
-                unix_timestamp: 1737558834,
-                ip: '127.0.0.1',
+              'email': 'bert.gray@mail.com',
+              'first_name': 'Bert',
+              'last_name': 'Gray',
+              'country_code': 'ie',
+              'tos_acceptance': {
+                'unix_timestamp': 1737558834,
+                'ip': '127.0.0.1',
               },
             }),
           });
