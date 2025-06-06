@@ -13,13 +13,12 @@ export async function POST(req: NextRequest) {
     "email":"${email}",
     "first_name":"${first_name}",
     "last_name":"${last_name}",
-    "country_code" : "at",
+    "country_code" : "us",
     "tos_acceptance": {
       "unix_timestamp": ${unixTimeInSeconds},"ip":"${clientIp}"
     }
   }`
-  console.log(payload)
-  // return NextResponse.json(JSON.stringify(payload))
+
   try {
     const response = await axios.post(API_URL, (payload), {
       headers: {

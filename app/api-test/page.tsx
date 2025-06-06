@@ -11,11 +11,7 @@ const page = () => {
               'email': 'bert.gray@mail.com',
               'first_name': 'Bert',
               'last_name': 'Gray',
-              'country_code': 'ie',
-              'tos_acceptance': {
-                'unix_timestamp': 1737558834,
-                'ip': '127.0.0.1',
-              },
+              'country_code': 'us',
             }),
           });
           const data = await res.json();
