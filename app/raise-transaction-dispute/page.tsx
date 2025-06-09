@@ -4,12 +4,16 @@ import React, { useState } from 'react'
 import { AlertCircle, Send, CheckCircle } from 'lucide-react'
 import { useCreateTransactionComplaint } from '../hooks/useCreateTransactionComplaint'
 import { useSearchParams } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 const ComplaintForm = () => {
   const params = useSearchParams()
-  const transactionId = params.get('tx_id')
   const trustapUser = params.get('buyerId')
-
+  const transactionId = params.get('tx_id')
+  console.log(trustapUser, transactionId)
+//   console.log(buyerId, state)
+//   const transactionId = '27377'
+//   const trustapUser = '1-43941cfa-f517-4059-a6f4-a2c7a41c253b'
   const [description, setDescription] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
 
@@ -31,8 +35,10 @@ const ComplaintForm = () => {
       })
 
       setShowSuccess(true)
-    } catch (err) {
-      console.error('Complaint failed:', err)
+    } catch (err:any) {
+        toast.error(err.response.data.error.error)
+        console.log(err)
+    //   console.error('Complaint failed:', err)
     }
   }
 
@@ -40,7 +46,7 @@ const ComplaintForm = () => {
 
   if (showSuccess) {
     return (
-      <div className="p-6 max-w-xl mx-auto mt-10 bg-green-50 border border-green-200 rounded-xl shadow">
+      <div className="p-6 mt-42 max-w-xl mx-auto mt-10 bg-green-50 border border-green-200 rounded-xl shadow">
         <div className="flex flex-col items-center justify-center space-y-4 text-green-800">
           <CheckCircle className="w-10 h-10" />
           <h2 className="text-2xl font-semibold">Complaint Submitted Successfully</h2>
