@@ -46,15 +46,12 @@ export default function Stepper() {
   useEffect(()=>{
     const paymentID = searchParams.get('payment')
     if(step===0){
-      router.push('/login')
+      router.push('/login?payment=' + paymentID)
     }
     if(step===2){
       if(paymentID) router.push('/checkout?payment=' + paymentID)
-      else router.push('/checkout')
+      else router.push('/broken-link')
     }
-    // if(step===2){
-    //   router.push('/payment')
-    // }
   },[pathName])
 
   return (

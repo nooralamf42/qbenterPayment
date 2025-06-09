@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useSteps } from '@/app/hooks/useSteps';
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
 import { useCreateGuestUser } from '@/app/hooks/useCreateGuestUser';
+import toast from 'react-hot-toast';
 
 export default function CheckoutForm() {
     const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true , noLoginRedir:true})
@@ -42,6 +43,9 @@ export default function CheckoutForm() {
         mutateAsync({firstName: formData.firstName, lastName: formData.lastName, email: formData.email}).then((res) => {
             setUserDetails({...formData, guestUserId: res.id})
             setStep(3)
+            toast.success('Saved Details')
+        }).catch(()=>{
+            toast.error('Internal Server Error! Try again')
         })
     };
 

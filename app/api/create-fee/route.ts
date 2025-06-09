@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const response = await fetch(`${TRUSTAP_API_URL}?price=${price}00&currency=usd`, {
+    const response = await fetch(`${TRUSTAP_API_URL}?price=${price}&currency=usd`, {
       headers: {
         Authorization: `Basic ${Buffer.from(`${api_key}:`).toString("base64")}`,
       },

