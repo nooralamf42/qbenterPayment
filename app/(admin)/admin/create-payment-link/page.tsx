@@ -172,7 +172,7 @@ export default function QuickBooksPaymentLinkCreator() {
                 <div className="flex justify-between">
                   <span>Price:</span>
                   
-                  <span>${(totalPrice + discountAmount) || '0.00'}</span>
+                  <span>${(parseFloat(totalPrice) + parseFloat(discountAmount)) || '0.00'}</span>
                 </div>
                 {discountAmount && (
                   <div className="flex justify-between">
