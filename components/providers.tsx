@@ -3,11 +3,14 @@
 
 import { Provider } from 'jotai'
 import { PropsWithChildren } from 'react'
+import QueryClientProvider from './querClientProvider'
 
 const Providers = ({ children }: PropsWithChildren) => {
   return (
     <Provider>
-      {children}
+      <QueryClientProvider>
+        {children}
+      </QueryClientProvider>
     </Provider>
   )
 }

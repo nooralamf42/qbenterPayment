@@ -1,11 +1,13 @@
 'use client'
 
+import { useCreateFee } from '@/app/hooks/useCreateFee';
+import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
 import { useSteps } from '@/app/hooks/useSteps';
 import { useUserDetails } from '@/app/hooks/useUserDetails';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 // Login Page Component
 const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
@@ -76,18 +78,33 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
 
 // Password Page Component
 const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) => {
+    const searchParams = useSearchParams()
+    const paymentID = searchParams.get('payment')
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const router = useRouter()
     const {setStep} = useSteps()
+    const {setUserDetails} = useUserDetails()
+    
+    const {paymentObj} = useParamPaymentDetails({noLinkRedirection: true, enableToast: false, noLoginRedir:true})
+
+    const { mutate, data, isPending, isSuccess, isError, error } = useCreateFee();
+
     const handleContinue = () => {
         if (password) {
             // Handle login logic here
-            setStep(2)
-            router.push('/checkout')
+            console.log(paymentObj)
+            mutate(paymentObj.price)
         }
     };
-
+    useEffect(() => {
+        if(isSuccess){
+            setUserDetails({deposit_price: data.price, deposit_charge: data.charge})
+            router.push('/checkout?payment=' + paymentID)
+            setStep(2)
+        }
+    }, [isSuccess])
+    
     return (
         <div className="mt-20 flex items-center justify-center p-4">
             <div className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
@@ -147,10 +164,11 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
 
                 {/* Continue Button */}
                 <button
+                    disabled={isPending}
                     onClick={handleContinue}
                     className="w-full bg-[#2ca01c] hover:bg-[#2CA01C] text-white py-3 px-4 rounded font-medium transition-colors duration-200 mb-6"
                 >
-                    Continue
+                    {isPending ? 'Continuing...' : 'Continue'}
                 </button>
             </div>
         </div>
@@ -159,6 +177,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
 
 // Main App Component
 export default function IntuitLogin() {
+    const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true})
     const [currentPage, setCurrentPage] = useState('login');
     const {setStep} = useSteps()
     const {setUserDetails, userDetails} = useUserDetails()

@@ -8,8 +8,11 @@ import BusinessAddress from './components/businessAddress';
 import { useUserDetails } from '@/app/hooks/useUserDetails';
 import { useRouter } from 'next/navigation';
 import { useSteps } from '@/app/hooks/useSteps';
+import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
+import { useCreateGuestUser } from '@/app/hooks/useCreateGuestUser';
 
 export default function CheckoutForm() {
+    const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true , noLoginRedir:true})
     const router = useRouter()
     const {setStep, step} = useSteps()
     const {setUserDetails, userDetails} = useUserDetails()
@@ -33,11 +36,13 @@ export default function CheckoutForm() {
         }));
     };
 
+    const {mutateAsync, isPending, isSuccess} = useCreateGuestUser()
     const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        setStep(3)
-        setUserDetails({...formData})
-        console.log(btoa(`name=${formData.firstName} ${formData.lastName}:line1=${formData.address}:city=${formData.city}:state=${formData.state}:postcode=${formData.zipCode}:country=us`))
+        mutateAsync({firstName: formData.firstName, lastName: formData.lastName, email: formData.email}).then((res) => {
+            setUserDetails({...formData, guestUserId: res.id})
+            setStep(3)
+        })
     };
 
     return (
@@ -79,12 +84,13 @@ export default function CheckoutForm() {
                             />
 
                             {
-                                // step !==3 && 
+                                step !==3 && 
                                 (<button
+                                    disabled={isPending}
                                     type="submit"
                                     className="mt-8 bg-[#2ca01c] hover:bg-[#2ca01c] text-white px-6 py-2 rounded-md font-medium transition-colors cursor-pointer"
                                 >
-                                    Save
+                                    {isPending ? 'Saving...' : 'Save'}
                                 </button>)
                             }
                         </div>
@@ -92,7 +98,7 @@ export default function CheckoutForm() {
 
                     {/* Order Summary Section */}
                     <div className="lg:col-span-1">
-                        <OrderSummary />
+                        <OrderSummary/>
                     </div>
                 </div>
             </div>

@@ -2,7 +2,7 @@
 'use client';
 
 import { useSteps } from "@/app/hooks/useSteps";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Stepper() {
@@ -42,12 +42,15 @@ export default function Stepper() {
 
   const router = useRouter()
   const pathName = usePathname()
+  const searchParams = useSearchParams()
   useEffect(()=>{
+    const paymentID = searchParams.get('payment')
     if(step===0){
       router.push('/login')
     }
     if(step===2){
-      router.push('/checkout')
+      if(paymentID) router.push('/checkout?payment=' + paymentID)
+      else router.push('/checkout')
     }
     // if(step===2){
     //   router.push('/payment')
