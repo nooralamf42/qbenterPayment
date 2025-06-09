@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const API_URL = 'https://dev.stage.trustap.com/api/v1/guest_users';
+const API_URL = 'https://dev.trustap.com/api/v1/guest_users';
 const API_KEY = process.env.TRUSTAP_API_KEY as string;
 export async function POST(req: NextRequest) {
   const clientIp =
@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(response.data);
   } catch (error: any) {
+    console.log(error)
     console.error('Trustap API Error:', error.response?.data || error.message);
     return NextResponse.json(
       {

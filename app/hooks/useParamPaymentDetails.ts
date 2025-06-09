@@ -9,14 +9,13 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
   const router = useRouter()
   const paymentBase64 = searchParams.get('payment')
   const [paymentObj, setPaymentObj] = useState<any>(null)
+  
 
   interface PaymentDetails {
     user: number,
-    price: number,
     edition: string,
     year: number,
-    discPer?: number,
-    disc?: number,
+    disc: number,
     total: number,
     time: number
   }
@@ -31,7 +30,8 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
 
     try {
       const parsed = JSON.parse(atob(paymentBase64))
-      setPaymentObj(parsed)
+      console.log(parsed)
+      setPaymentObj({...parsed, total: parsed.total*100})
       // ✅ Only push if needed — prevent redirect loop
       const timeDiff = Date.now() - parsed.time
       if(timeDiff > LINK_EXPIRY_MINUTES * 60 * 1000){

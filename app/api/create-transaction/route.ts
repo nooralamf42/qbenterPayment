@@ -2,17 +2,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-const API_URL = 'https://dev.stage.trustap.com/api/v1/p2p/me/transactions/create_with_guest_user';
+const API_URL = 'https://dev.trustap.com/api/v1/p2p/me/transactions/create_with_guest_user';
 const API_KEY = process.env.TRUSTAP_API_KEY as string;
 const SELLER_ID = process.env.TRUSTAP_SELLER_ID as string;
 export async function POST(req: NextRequest) {
 
-  const {buyer_id, deposit_price, deposit_charge, description} = await req.json();
+  const { buyer_id, deposit_price, deposit_charge, description } = await req.json();
   const payload = {
-    "seller_id":SELLER_ID,
+    "seller_id": SELLER_ID,
     "buyer_id": buyer_id,
     "creator_role": "seller",
-    "currency": "usd", 
+    "currency": "usd",
     "description": description,
     "deposit_price": deposit_price,
     "deposit_charge": deposit_charge,

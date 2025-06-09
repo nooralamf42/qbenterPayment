@@ -1,298 +1,226 @@
 "use client"
 
-import { useAdmin } from '@/app/hooks/useAdmin';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import { useAdmin } from '@/app/hooks/useAdmin'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 
 export default function QuickBooksPaymentLinkCreator() {
-  const [users, setUsers] = useState(1);
-  const [pricePerUser, setPricePerUser] = useState('');
-  const [selectedEdition, setSelectedEdition] = useState('Silver');
-  const [selectedYears, setSelectedYears] = useState(1);
-  const [customDiscount, setCustomDiscount] = useState('');
-  const [paymentLink, setPaymentLink] = useState('');
+  const [users, setUsers] = useState(1)
+  const [totalPrice, setTotalPrice] = useState('')
+  const [selectedEdition, setSelectedEdition] = useState('Silver')
+  const [selectedYears, setSelectedYears] = useState(1)
+  const [discountAmount, setDiscountAmount] = useState('')
+  const [paymentLink, setPaymentLink] = useState('')
 
-  const router = useRouter()  
-const {admin} = useAdmin();
+  const router = useRouter()
+  const { admin } = useAdmin()
+
   useEffect(() => {
-    if(!admin){
+    if (!admin) {
       router.push('/admin')
     }
-  }, [router, admin]);
+  }, [router, admin])
 
   useEffect(() => {
-    setPaymentLink('');
-  }, [users, pricePerUser, selectedEdition, selectedYears, customDiscount]);
-  
-
+    setPaymentLink('')
+  }, [users, totalPrice, selectedEdition, selectedYears, discountAmount])
 
   const editions = [
-    {
-      name: 'Silver',
-      value: 'silver',
-      features: ['Up to 30 users', 'Basic reporting', 'Industry editions']
-    },
-    {
-      name: 'Gold', 
-      value: 'gold',
-      features: ['Advanced reporting', 'Advanced pricing', 'Enhanced payroll']
-    },
-    {
-      name: 'Platinum',
-      value: 'platinum', 
-      features: ['Advanced inventory', 'Enhanced CRM', 'Workflow max']  
-    },
-    {
-      name: 'Diamond',
-      value: 'diamond',
-      features: ['All Platinum features', 'Priority support', 'Advanced customization']
-    }
-  ];
+    { name: 'Silver', value: 'silver' },
+    { name: 'Gold', value: 'gold' },
+    { name: 'Platinum', value: 'platinum' },
+    { name: 'Diamond', value: 'diamond' }
+  ]
 
   const yearOptions = [
     { value: 1, label: '1 Year' },
     { value: 2, label: '2 Years' },
     { value: 3, label: '3 Years' }
-  ];
-
-  const calculateSubtotal = () => {
-    const basePrice = parseFloat(pricePerUser) || 0;
-    return basePrice * users * selectedYears;
-  };
-
-  const calculateDiscount = () => {
-    const discount = parseFloat(customDiscount) || 0;
-    const subtotal = calculateSubtotal();
-    return (subtotal * discount) / 100;
-  };
+  ]
 
   const calculateTotal = () => {
-    return (Math.floor(calculateSubtotal() - calculateDiscount()));
-  };
+    const price = parseFloat(totalPrice) || 0
+    const discount = parseFloat(discountAmount) || 0
+    return Math.max(price - discount, 0)
+  }
 
   const generatePaymentLink = () => {
-    const paymentLink = customDiscount?  {
-      user:users,
-      price:pricePerUser,
-      edition:selectedEdition,
-      year:selectedYears,
-      discPer:customDiscount,
-      time: Date.now(),
-      disc:calculateDiscount(),  
-      total: calculateTotal()
-    } : {
-      user:users,
-      price:pricePerUser,
-      edition:selectedEdition,
-      year:selectedYears,
+    const price = parseFloat(totalPrice) || 0
+    const discount = parseFloat(discountAmount) || 0
+
+    if (discount > price) {
+      toast.error('Discount cannot be greater than total price!')
+      return
+    }
+
+    const paymentObj = {
+      user: users,
+      edition: selectedEdition,
+      year: selectedYears,
+      disc: Number(discountAmount) || 0,
       total: calculateTotal(),
       time: Date.now()
     }
 
-    setPaymentLink(window.location.origin + '/?payment=' + btoa(JSON.stringify(paymentLink)))
-  };
+    console.log(paymentObj)
+
+    setPaymentLink(window.location.origin + '/?payment=' + btoa(JSON.stringify(paymentObj)))
+  }
 
   return (
     <div className="py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
+      <div className="max-w-4xl mx-auto px-4 ">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Payment Link</h1>
-          <p className="text-gray-600">Generate a custom payment link for QuickBooks Enterprise subscriptions</p>
+          <p className="text-gray-600">Generate a custom payment link for QuickBooks Enterprise</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Configuration Form */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Payment Configuration</h2>
-            
-            <div className="space-y-6">
+          {/* Config Form */}
+          <div className="bg-white border p-6 rounded-lg shadow-[5px_5px_0px_0px_rgba(109,40,217)] space-y-6">
+            <div>
+              <label className="block mb-2 font-medium text-sm text-gray-700">Edition</label>
+              <select
+                value={selectedEdition}
+                onChange={(e) => setSelectedEdition(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {editions.map((e) => (
+                  <option key={e.value} value={e.name}>
+                    QuickBooks Enterprise 24.0 {e.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              {/* QuickBooks Edition */}
-              <div>
-                <label htmlFor="edition" className="block text-sm font-medium text-gray-700 mb-2">
-                  QuickBooks Enterprise Edition
-                </label>
-                <select
-                  id="edition"
-                  value={selectedEdition}
-                  onChange={(e) => setSelectedEdition(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                    backgroundPosition: 'right 0.5rem center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundSize: '1.5em 1.5em',
-                    paddingRight: '2.5rem'
-                  }}
-                >
-                  {editions.map(edition => (
-                    <option key={edition.value} value={edition.name}>
-                      QuickBooks Enterprise 24.0 {edition.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block mb-2 font-medium text-sm text-gray-700">Number of Users</label>
+              <input
+                type="number"
+                min="1"
+                value={users}
+                onChange={(e) => setUsers(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
 
-              {/* Number of Users */}
-              <div>
-                <label htmlFor="users" className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of Users
-                </label>
-                <input
-                  type="number"
-                  id="users"
-                  min="1"
-                  max="100"
-                  value={users}
-                  onChange={(e) => setUsers(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter number of users"
-                />
-              </div>
+            <div>
+              <label className="block mb-2 font-medium text-sm text-gray-700">Subscription Duration</label>
+              <select
+                value={selectedYears}
+                onChange={(e) => setSelectedYears(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y.value} value={y.value}>{y.label}</option>
+                ))}
+              </select>
+            </div>
 
-              {/* Price per User */}
-              <div>
-                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                  Price per User per Year ($)
-                </label>
-                <input
-                  type="number"
-                  id="price"
-                  step="0.01"
-                  min="0"
-                  value={pricePerUser}
-                  onChange={(e) => setPricePerUser(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter price per user"
-                />
-              </div>
+            <div>
+              <label className="block mb-2 font-medium text-sm text-gray-700">Total Price ($)</label>
+              <input
+                type="number"
+                min="0"
+                value={totalPrice}
+                onChange={(e) => setTotalPrice(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
 
-              {/* Subscription Years */}
-              <div>
-                <label htmlFor="years" className="block text-sm font-medium text-gray-700 mb-2">
-                  Subscription Duration
-                </label>
-                <select
-                  id="years"
-                  value={selectedYears}
-                  onChange={(e) => setSelectedYears(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-                    backgroundPosition: 'right 0.5rem center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundSize: '1.5em 1.5em',
-                    paddingRight: '2.5rem'
-                  }}
-                >
-                  {yearOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block mb-2 font-medium text-sm text-gray-700">Discount Amount ($)</label>
+              <input
+                type="number"
+                min="0"
+                value={discountAmount}
+                onChange={(e) => {
+                  const value = e.target.value
+                  const discount = parseFloat(value) || 0
+                  const price = parseFloat(totalPrice) || 0
 
-              {/* Custom Discount */}
-              <div>
-                <label htmlFor="discount" className="block text-sm font-medium text-gray-700 mb-2">
-                  Discount Percentage (%)
-                </label>
-                <input
-                  type="number"
-                  id="discount"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={customDiscount}
-                  onChange={(e) => setCustomDiscount(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter discount percentage (optional)"
-                />
-              </div>
+                  if (discount > price) {
+                    toast.error('Discount cannot be greater than total price!')
+                    return
+                  }
+
+                  setDiscountAmount(value)
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              />
             </div>
           </div>
 
-          {/* Preview Panel */}
+          {/* Summary + Actions */}
           <div className="space-y-6">
-            {/* Order Summary */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Product:</span>
-                  <span className="font-medium text-gray-900">QuickBooks Enterprise 24.0 {selectedEdition}</span>
+            <div className="bg-white p-6 border rounded-lg shadow-[5px_5px_0px_0px_rgba(109,40,217)]">
+              <h3 className="font-semibold text-lg mb-4">Order Summary</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Edition:</span>
+                  <span>QuickBooks 24.0 {selectedEdition}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Users:</span>
-                  <span className="font-medium text-gray-900">{users}</span>
+                <div className="flex justify-between">
+                  <span>Users:</span>
+                  <span>{users}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Price per user:</span>
-                  <span className="font-medium text-gray-900">${pricePerUser || '0.00'}</span>
+                <div className="flex justify-between">
+                  <span>Years:</span>
+                  <span>{selectedYears}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Duration:</span>
-                  <span className="font-medium text-gray-900">{selectedYears} year(s)</span>
+                <div className="flex justify-between">
+                  <span>Price:</span>
+                  
+                  <span>${(totalPrice + discountAmount) || '0.00'}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span className="font-medium text-gray-900">${calculateSubtotal().toFixed(2)}</span>
-                </div>
-                {parseFloat(customDiscount) > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Discount ({customDiscount}%):</span>
-                    <span className="font-medium text-red-600">-${calculateDiscount().toFixed(2)}</span>
+                {discountAmount && (
+                  <div className="flex justify-between">
+                    <span>Discount:</span>
+                    <span className="text-red-500">-${discountAmount}</span>
                   </div>
                 )}
-                <div className="border-t border-gray-200 pt-3">
-                  <div className="flex justify-between">
-                    <span className="text-base font-semibold text-gray-900">Total:</span>
-                    <span className="text-lg font-bold text-blue-600">${calculateTotal().toFixed(2)}</span>
-                  </div>
+                <div className="flex justify-between">
+                  <span>Total Price:</span>
+                  <span>${totalPrice || '0.00'}</span>
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
-              
-              <div className="space-y-3">
-                {paymentLink ? (
-                  <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center space-x-2 w-full">
-                      <input
-                        type="text"
-                        value={paymentLink}
-                        readOnly
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                      <button
-                        onClick={() => {navigator.clipboard.writeText(paymentLink); toast.success('Payment link copied to clipboard'); }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors duration-200"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                ) : (
+            {/* Action */}
+            <div className="bg-white p-6 border rounded-lg shadow-[5px_5px_0px_0px_rgba(109,40,217)]">
+              <h3 className="font-semibold text-lg mb-4">Actions</h3>
+              {paymentLink ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={paymentLink}
+                    readOnly
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(paymentLink)
+                      toast.success('Copied!')
+                    }}
+                    className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-md hover:bg-green-700 bg-green-500"
+                  >
+                    Copy
+                  </button>
+                </div>
+              ) : (
                 <button
                   onClick={generatePaymentLink}
-                  disabled={!pricePerUser}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors duration-200"
+                  disabled={!totalPrice || parseFloat(discountAmount) > parseFloat(totalPrice)}
+                  className="w-full py-2 bg-green-500 cursor-pointer text-white rounded-md hover:bg-green-600 disabled:bg-gray-800 disabled:cursor-not-allowed"
                 >
                   Generate Payment Link
                 </button>
-                )}                  
-              </div>
+              )}
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

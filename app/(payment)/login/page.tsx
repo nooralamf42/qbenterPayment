@@ -73,7 +73,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                     Sign in
                 </button>
                 <p className='text-gray-400 text-xs mt-5 leading-4'>
-                    By selecting Sign in for your Intuit Account, you agree to our <Link href="https://www.qbenterprise.us/terms-conditions" className='text-blue-600 hover:text-blue-800'>Terms</Link>. Our <Link className='text-blue-600 hover:text-blue-800' href="https://www.intuit.com/privacy/">Privacy Policy</Link> applies to your personal data.
+                    By selecting Sign in for your Intuit Account, you agree to our <Link href="https://www.intuit.com/legal/terms/en-us/website/" className='text-blue-600 hover:text-blue-800'>Terms</Link>. Our <Link className='text-blue-600 hover:text-blue-800' href="https://www.intuit.com/privacy/">Privacy Policy</Link> applies to your personal data.
                 </p>
             </form>
         </div>
@@ -101,7 +101,8 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
             return
         }
         if (password) {
-            mutateAsync((Math.floor(paymentObj.total))*100).then((data)=>{
+            mutateAsync((Math.floor(paymentObj.total))).then((data)=>{
+                console.log(data)
             setUserDetails({deposit_price: data.price, deposit_charge: data.charge})
             setStep(2)
             toast.success('Login successful')

@@ -1,4 +1,4 @@
-const TRUSTAP_API_URL = "https://dev.stage.trustap.com/api/v1/p2p/charge";
+const TRUSTAP_API_URL = "https://dev.trustap.com/api/v1/p2p/charge";
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
         { status: response.status }
       );
     }
-
     const data = await response.json();
+    console.log(data)
     return NextResponse.json(data);
 
   } catch (err: any) {
