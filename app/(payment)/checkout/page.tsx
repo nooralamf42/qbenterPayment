@@ -14,7 +14,6 @@ import toast from 'react-hot-toast';
 
 export default function CheckoutForm() {
     const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true , noLoginRedir:true})
-    const router = useRouter()
     const {setStep, step} = useSteps()
     const {setUserDetails, userDetails} = useUserDetails()
     const [formData, setFormData] = useState({
@@ -51,7 +50,9 @@ export default function CheckoutForm() {
 
     return (
         <div className="min-h-screen py-8 px-5">
+            
             <div className="max-w-7xl mx-auto">
+                <img className='max-w-[200px] mb-10 mt-5' src="/quickbooks_logo.svg" alt="" />
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">Great! One last step</h1>
                     <p className="text-gray-600">Add your billing information. You can review your cart again before you place the order</p>

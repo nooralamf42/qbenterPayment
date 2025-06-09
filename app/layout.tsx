@@ -20,6 +20,34 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "QuickBooks Enterprise",
   description: "Accounting Software for small businesses",
+  openGraph: {
+    images: [
+      {
+        url: "/quickbooks_logo.svg",
+        width: 1200,
+        height: 630,
+        alt: "QuickBooks Enterprise"
+      },
+      {
+        url: "/quickbooks_logo.svg",
+        width: 640,
+        height: 335,
+        alt: "QuickBooks Enterprise"
+      },
+      {
+        url: "/quickbooks_logo.svg",
+        width: 440,
+        height: 220,
+        alt: "QuickBooks Enterprise"
+      },
+      {
+        url: "/quickbooks_logo.svg",
+        width: 220,
+        height: 110,
+        alt: "QuickBooks Enterprise"
+      }
+    ]
+  }
 };
 
 export default function RootLayout({

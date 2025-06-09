@@ -28,7 +28,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
             <form onSubmit={handleSignIn} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
                 <div className="mb-5">
-                    <Image src="/logo.svg" className='mx-auto' alt="Intuit Logo" width={100} height={100} />
+                    <Image src="/quickbooks_logo.svg" className='mx-auto' alt="Intuit Logo" width={200} height={100} />
                 </div>
 
                 {/* Title */}
@@ -119,7 +119,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
             <form onSubmit={handleContinue} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
                 <div className="mb-5">
-                    <Image src="/logo.svg" className='mx-auto' alt="Intuit Logo" width={100} height={100} />
+                    <Image src="/quickbooks_logo.svg" className='mx-auto' alt="Intuit Logo" width={200} height={100} />
                 </div>
 
                 {/* Title */}
