@@ -5,7 +5,7 @@ import IntuitLogin from './(payment)/login/page'
 import useParamPaymentDetails from './hooks/useParamPaymentDetails'
 
 
-const page = () => {
+const PaymentLoginPage = () => {
   const {paymentObj} = useParamPaymentDetails({enableToast: true, noLinkRedirection: false})
   
   return (
@@ -15,4 +15,4 @@ const page = () => {
   )
 }
 
-export default page
+export default PaymentLoginPage

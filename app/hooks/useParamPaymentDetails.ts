@@ -2,7 +2,7 @@ import toast from "react-hot-toast"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
-const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }: { noLinkRedirection: Boolean, enableToast: Boolean, noLoginRedir?: Boolean}) => {
+const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }: { noLinkRedirection: boolean, enableToast: boolean, noLoginRedir?: boolean}) => {
   const searchParams = useSearchParams()
   const router = useRouter()
   const paymentBase64 = searchParams.get('payment')
@@ -22,7 +22,7 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
       setPaymentObj(parsed)
       // ✅ Only push if needed — prevent redirect loop
 
-      !noLoginRedir && router.push('/login?payment=' + paymentBase64)
+      if(!noLoginRedir) router.push('/login?payment=' + paymentBase64)
 
     } catch (error) {
       if (enableToast) toast.error('Invalid payment link')
