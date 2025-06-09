@@ -7,7 +7,7 @@ import { useSearchParams } from 'next/navigation'
 
 const ComplaintForm = () => {
   const params = useSearchParams()
-  const transactionId = params.get('transactionId')
+  const transactionId = params.get('tx_id')
   const trustapUser = params.get('buyerId')
 
   const [description, setDescription] = useState('')

@@ -32,7 +32,7 @@ export default function OrderSummary() {
     })
       .then((res) => {
         toast.success("Redirecting to payment page")
-        const link = `https://actions.stage.trustap.com/f2f/transactions/${res.id}/pay_deposit?redirect_uri=https://www.quickbooks-solutions.com/raise-transaction-dispute?&buyerId=${res.buyer_id}&state=${linkDetails}`
+        const link = `https://actions.stage.trustap.com/f2f/transactions/${res.id}/pay_deposit?redirect_uri=https://www.quickbooks-solutions.com/raise-transaction-dispute?buyerId=${res.buyer_id}&state=${linkDetails}`
         window.location.href = link
       })
       .catch(() => {
