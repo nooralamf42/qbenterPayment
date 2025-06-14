@@ -61,7 +61,6 @@ const AdminLogin = () => {
 
         try {
             if (!ENCODED_ADMIN_PASS) {
-                console.log()
                 toast.error('Admin configuration missing');
                 setIsLoading(false);
                 return;

@@ -30,8 +30,7 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
 
     try {
       const parsed = JSON.parse(atob(paymentBase64))
-      console.log(parsed)
-      setPaymentObj({...parsed, total: parsed.total*100})
+      setPaymentObj({...parsed, total: parsed.total})
       // ✅ Only push if needed — prevent redirect loop
       const timeDiff = Date.now() - parsed.time
       if(timeDiff > LINK_EXPIRY_MINUTES * 60 * 1000){

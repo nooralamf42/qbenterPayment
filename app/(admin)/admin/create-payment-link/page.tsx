@@ -6,12 +6,12 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 export default function QuickBooksPaymentLinkCreator() {
-  const [users, setUsers] = useState(1)
-  const [totalPrice, setTotalPrice] = useState('')
-  const [selectedEdition, setSelectedEdition] = useState('Silver')
-  const [selectedYears, setSelectedYears] = useState(1)
-  const [discountAmount, setDiscountAmount] = useState('')
-  const [paymentLink, setPaymentLink] = useState('')
+  const [users, setUsers] = useState<number>(1)
+  const [totalPrice, setTotalPrice] = useState<number>(0)
+  const [selectedEdition, setSelectedEdition] = useState<string>('Silver')
+  const [selectedYears, setSelectedYears] = useState<number>(1)
+  const [discountAmount, setDiscountAmount] = useState<number>(0)
+  const [paymentLink, setPaymentLink] = useState<string>('')
 
   const router = useRouter()
   const { admin } = useAdmin()
@@ -31,26 +31,26 @@ export default function QuickBooksPaymentLinkCreator() {
     { name: 'Gold', value: 'gold' },
     { name: 'Platinum', value: 'platinum' },
     { name: 'Diamond', value: 'diamond' }
-  ]
+  ] as const
 
   const yearOptions = [
     { value: 1, label: '1 Year' },
     { value: 2, label: '2 Years' },
     { value: 3, label: '3 Years' }
-  ]
+  ] as const
 
-  const calculateTotal = () => {
-    const price = parseFloat(totalPrice) || 0
-    const discount = parseFloat(discountAmount) || 0
-    return Math.max(price - discount, 0)
+  const calculateTotal = (): number => {
+    return Math.max(totalPrice - discountAmount, 0)
   }
 
-  const generatePaymentLink = () => {
-    const price = parseFloat(totalPrice) || 0
-    const discount = parseFloat(discountAmount) || 0
-
-    if (discount > price) {
+  const generatePaymentLink = (): void => {
+    if (discountAmount > totalPrice) {
       toast.error('Discount cannot be greater than total price!')
+      return
+    }
+
+    if (totalPrice <= 0) {
+      toast.error('Total price must be greater than 0!')
       return
     }
 
@@ -58,15 +58,55 @@ export default function QuickBooksPaymentLinkCreator() {
       user: users,
       edition: selectedEdition,
       year: selectedYears,
-      disc: Number(discountAmount) || 0,
+      disc: discountAmount,
       total: calculateTotal(),
       time: Date.now()
     }
 
-    console.log(paymentObj)
+
 
     setPaymentLink(window.location.origin + '/?payment=' + btoa(JSON.stringify(paymentObj)))
   }
+
+  const handleUsersChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = parseInt(e.target.value) || 1
+    setUsers(Math.max(1, value))
+  }
+
+  const handleTotalPriceChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = parseFloat(e.target.value) || 0
+    setTotalPrice(Math.max(0, value))
+  }
+
+  const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const value = parseFloat(e.target.value) || 0
+    
+    if (value > totalPrice) {
+      toast.error('Discount cannot be greater than total price!')
+      return
+    }
+
+    setDiscountAmount(Math.max(0, value))
+  }
+
+  const handleEditionChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    setSelectedEdition(e.target.value)
+  }
+
+  const handleYearsChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    setSelectedYears(parseInt(e.target.value))
+  }
+
+  const copyToClipboard = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(paymentLink)
+      toast.success('Payment link copied to clipboard!')
+    } catch (error) {
+      toast.error('Failed to copy to clipboard')
+    }
+  }
+
+  const isGenerateDisabled = totalPrice <= 0 || discountAmount > totalPrice
 
   return (
     <div className="py-8">
@@ -83,8 +123,8 @@ export default function QuickBooksPaymentLinkCreator() {
               <label className="block mb-2 font-medium text-sm text-gray-700">Edition</label>
               <select
                 value={selectedEdition}
-                onChange={(e) => setSelectedEdition(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={handleEditionChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {editions.map((e) => (
                   <option key={e.value} value={e.name}>
@@ -100,8 +140,8 @@ export default function QuickBooksPaymentLinkCreator() {
                 type="number"
                 min="1"
                 value={users}
-                onChange={(e) => setUsers(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={handleUsersChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
 
@@ -109,8 +149,8 @@ export default function QuickBooksPaymentLinkCreator() {
               <label className="block mb-2 font-medium text-sm text-gray-700">Subscription Duration</label>
               <select
                 value={selectedYears}
-                onChange={(e) => setSelectedYears(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={handleYearsChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 {yearOptions.map((y) => (
                   <option key={y.value} value={y.value}>{y.label}</option>
@@ -123,9 +163,10 @@ export default function QuickBooksPaymentLinkCreator() {
               <input
                 type="number"
                 min="0"
+                step="0.01"
                 value={totalPrice}
-                onChange={(e) => setTotalPrice(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={handleTotalPriceChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
 
@@ -134,20 +175,10 @@ export default function QuickBooksPaymentLinkCreator() {
               <input
                 type="number"
                 min="0"
+                step="0.01"
                 value={discountAmount}
-                onChange={(e) => {
-                  const value = e.target.value
-                  const discount = parseFloat(value) || 0
-                  const price = parseFloat(totalPrice) || 0
-
-                  if (discount > price) {
-                    toast.error('Discount cannot be greater than total price!')
-                    return
-                  }
-
-                  setDiscountAmount(value)
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={handleDiscountChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
@@ -171,18 +202,18 @@ export default function QuickBooksPaymentLinkCreator() {
                 </div>
                 <div className="flex justify-between">
                   <span>Price:</span>
-                  
-                  <span>${(parseFloat(totalPrice) - parseFloat(discountAmount)) || '0.00'}</span>
+                  <span>${totalPrice.toFixed(2)}</span>
                 </div>
-                {discountAmount && (
+                {discountAmount > 0 && (
                   <div className="flex justify-between">
                     <span>Discount:</span>
-                    <span className="text-red-500">-${discountAmount}</span>
+                    <span className="text-red-500">-${discountAmount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span>Total Price:</span>
-                  <span>${totalPrice || '0.00'}</span>
+                <hr className="my-2" />
+                <div className="flex justify-between font-semibold">
+                  <span>Total:</span>
+                  <span>${calculateTotal().toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -191,28 +222,33 @@ export default function QuickBooksPaymentLinkCreator() {
             <div className="bg-white p-6 border rounded-lg shadow-[5px_5px_0px_0px_rgba(109,40,217)]">
               <h3 className="font-semibold text-lg mb-4">Actions</h3>
               {paymentLink ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={paymentLink}
-                    readOnly
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={paymentLink}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                    />
+                    <button
+                      onClick={copyToClipboard}
+                      className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+                    >
+                      Copy
+                    </button>
+                  </div>
                   <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(paymentLink)
-                      toast.success('Copied!')
-                    }}
-                    className="px-4 py-2 bg-blue-600 cursor-pointer text-white rounded-md hover:bg-green-700 bg-green-500"
+                    onClick={() => setPaymentLink('')}
+                    className="w-full py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                   >
-                    Copy
+                    Generate New Link
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={generatePaymentLink}
-                  disabled={!totalPrice || parseFloat(discountAmount) > parseFloat(totalPrice)}
-                  className="w-full py-2 bg-green-500 cursor-pointer text-white rounded-md hover:bg-green-600 disabled:bg-gray-800 disabled:cursor-not-allowed"
+                  disabled={isGenerateDisabled}
+                  className="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   Generate Payment Link
                 </button>
