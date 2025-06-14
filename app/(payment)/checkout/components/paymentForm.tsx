@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { CreditCard, AlertTriangle, Edit} from 'lucide-react';
 import toast from 'react-hot-toast';
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
-import { useUserDetails } from '@/app/hooks/useUserDetails';
 import { useSteps } from '@/app/hooks/useSteps';
 
 interface FormData {
