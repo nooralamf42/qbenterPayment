@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   try {
     const response = await axios.post(API_URL, JSON.stringify(payload));
     console.log(response.data)
-    if(response.data.messages.resultCode !== 'Ok') throw new Error(response.data.messages.message[0].text)
+    if(response.data.transactionResponse.responseCode !== '1') throw new Error(response.data.messages.message[0].text)
     return NextResponse.json(response.data);
   } catch (error: any) {
     console.log(error)
