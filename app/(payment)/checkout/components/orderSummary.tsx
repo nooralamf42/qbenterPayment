@@ -104,7 +104,7 @@ export default function OrderSummary({userData} :  {userData:UserData} ) {
           <button
             disabled={isPending}
             onClick={handlePaymentClick}
-            className="mt-8 w-full bg-[#2ca01c] hover:bg-[#228c15] text-white px-6 py-2 rounded-md font-medium transition-colors"
+            className="mt-8 w-full bg-[#2ca01c] hover:bg-[#228c15] text-white px-6 py-2 rounded-md font-medium transition-colors cursor-pointer"
           >
             {isPending ? "Processing..." : "Pay Now"}
           </button>

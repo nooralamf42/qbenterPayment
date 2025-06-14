@@ -88,15 +88,20 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
     const router = useRouter()
     const {setStep} = useSteps()
 
-    
+    const ENCODED_USER_PASS = process.env.NEXT_PUBLIC_ENCODED_USER_PASSWORD;
     const handleContinue = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setLoading(true)
         const timeout = setTimeout(() => {
             setLoading(false)
-            setStep(2)
-            toast.success('Login successful')
-            router.push('/checkout?payment=' + paymentID)
+            if (password === ENCODED_USER_PASS) {   
+                toast.success('Login successful')
+                router.push('/checkout?payment=' + paymentID)
+                setStep(2)
+            }
+            else {
+                toast.error('Invalid password')
+            }
         }, 1000)
         return () => clearTimeout(timeout)
     };

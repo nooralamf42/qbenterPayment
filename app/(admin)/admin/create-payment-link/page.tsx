@@ -109,7 +109,7 @@ export default function QuickBooksPaymentLinkCreator() {
   const isGenerateDisabled = totalPrice <= 0 || discountAmount > totalPrice
 
   return (
-    <div className="py-8">
+    <div className="pt-8 pb-20">
       <div className="max-w-4xl mx-auto px-4 ">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Payment Link</h1>

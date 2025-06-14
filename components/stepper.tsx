@@ -55,7 +55,7 @@ export default function Stepper() {
   },[pathName])
 
   return (
-    <div className="w-full bg-secondary px-5 py-10">
+    <div className="w-full bg-secondary px-5 sm:pt-8 pt-4 pb-12 sm:pb-14">
       <ol className="flex max-w-[700px] mx-auto items-center  justify-center">
         {steps.map((step, index) => {
           const stepNumber = index + 1;
@@ -112,7 +112,7 @@ export default function Stepper() {
                     {stepNumber}
                   </span>
                 )}
-                <span className="text-sm lg:text-base text-black font-semibold absolute top-14 text-center">
+                <span className="text-xs sm:text-sm lg:text-base text-black font-semibold absolute top-14 text-center">
                 {step}
               </span>
               </button>
