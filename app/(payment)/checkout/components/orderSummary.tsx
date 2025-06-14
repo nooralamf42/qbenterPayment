@@ -34,8 +34,8 @@ export default function OrderSummary({userData} :  {userData:UserData} ) {
     }, 100)
       })
       .catch((e) => {
-        console.log(e)
-        toast.error("Check Card Details! Try again")
+
+        toast.error(e.response.data.error || "Check Card Details! Try again")
       })
   }
 

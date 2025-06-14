@@ -58,11 +58,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await axios.post(API_URL, JSON.stringify(payload));
-    console.log(response.data)
-    if(response.data.transactionResponse.responseCode !== '1') throw new Error(response.data.messages.message[0].text)
+    
+    if(response.data.transactionResponse.responseCode !== '1') {
+      const errorMessege = response.data.transactionResponse.errors[0].errorText
+      return NextResponse.json(
+        {
+          message: 'Failed to create transaction',
+          error: errorMessege || "Something went wrong",
+        },
+        { status: 500 }
+      );
+    } 
     return NextResponse.json(response.data);
   } catch (error: any) {
-    console.log(error)
     return NextResponse.json(
       {
         message: 'Failed to create transaction',

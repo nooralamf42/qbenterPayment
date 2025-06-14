@@ -177,10 +177,9 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
         setIsPending(false);
         setIsSubmitted(true);
         setIsEditing(false);
-        toast.success('Form submitted successfully!');
         updateUserDetails({...formData, product_id: `${paymentObj.edition}${paymentObj.year}y`, product_description: `QuickBooks Enterprise ${paymentObj.edition} Edition of ${paymentObj.year} years for ${paymentObj.user} users`, amount: (paymentObj.total).toString(), cardExpirationDate: `${formData.year}-${formData.month}`, cardNumber: formData.cardNumber.replaceAll(' ', '')})
         setStep(3)
-      }, 1000);
+      }, 500);
     } else {
       toast.error('Please fill in all required fields correctly');
     }
@@ -189,23 +188,9 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
   const handleEdit = (): void => {
     setIsEditing(true);
     setIsSubmitted(false);
+    setStep(2)
   };
 
-  const handleSaveChanges = (): void => {
-    if (validateForm()) {
-      setIsPending(true);
-      // Simulate processing
-      setTimeout(() => {
-        setIsPending(false);
-        setIsEditing(false);
-        setIsSubmitted(true);
-        toast.success('Changes saved successfully!');
-        updateUserDetails({...formData, product_id: `${paymentObj.edition}${paymentObj.year}y`, product_description: `QuickBooks Enterprise ${paymentObj.edition} Edition of ${paymentObj.year} years for ${paymentObj.user} users`, amount: (paymentObj.total).toString(), cardExpirationDate: `${formData.year}-${formData.month}`, cardNumber: formData.cardNumber.replaceAll(' ', '')})
-      }, 1000);
-    } else {
-      toast.error('Please fill in all required fields correctly');
-    }
-  };
 
   const months = [
     { value: '01', label: '01' },
@@ -617,7 +602,7 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
         {/* Action Buttons */}
         {step === 2 && (
           <div className="mt-8">
-            {!isSubmitted && (
+            {!isSubmitted  && (
               <button
                 type="button"
                 disabled={isPending}
@@ -628,29 +613,6 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
               </button>
             )}
             
-            {isEditing && (
-              <div className="flex space-x-4">
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={handleSaveChanges}
-                  className="flex-1 bg-[#2ca01c] hover:bg-[#228c15] disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-3 rounded-md font-medium transition-colors"
-                >
-                  {isPending ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setIsSubmitted(true);
-                    setErrors({});
-                  }}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
