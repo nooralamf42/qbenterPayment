@@ -12,11 +12,11 @@ import { useRouter } from 'next/navigation';
 export default function PaymentSuccessPage() {
   const router = useRouter()
   const {step} = useSteps()
-  // useEffect(()=>{
-  //   if(step!==4){
-  //     router.push('/')
-  //   }
-  // },[step])
+  useEffect(()=>{
+    if(step!==4){
+      router.push('/')
+    }
+  },[step])
   return (
     <AutoConfettiWrapper delay={1000} duration={4000}>
     <div className="flex items-center justify-center px-4">
