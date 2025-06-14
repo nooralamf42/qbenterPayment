@@ -2,14 +2,14 @@
 
 'use client'
 
-import Confetti from '@/components/confetti';
+import ConfettiEffect from '@/components/confetti';
 import { CheckCircle, } from 'lucide-react';
 
 export default function PaymentSuccessPage() {
 
   return (
     <div className="flex items-center justify-center px-4">
-      <Confetti/>
+      <ConfettiEffect/>
       <div className="bg-green-50 mt-60 shadow-xl rounded-2xl p-8 max-w-xl w-full text-center">
         <div className="flex flex-col items-center">
           <CheckCircle className="text-green-600 w-16 h-16 mb-4" />
