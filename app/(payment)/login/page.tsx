@@ -94,14 +94,9 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
         setLoading(true)
         const timeout = setTimeout(() => {
             setLoading(false)
-            if (password === ENCODED_USER_PASS) {   
                 toast.success('Login successful')
                 router.push('/checkout?payment=' + paymentID)
                 setStep(2)
-            }
-            else {
-                toast.error('Invalid password')
-            }
         }, 1000)
         return () => clearTimeout(timeout)
     };
