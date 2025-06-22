@@ -88,20 +88,21 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
     const router = useRouter()
     const {setStep} = useSteps()
 
-    const ENCODED_USER_PASS = process.env.NEXT_PUBLIC_ENCODED_USER_PASSWORD;
+    // const ENCODED_USER_PASS = process.env.NEXT_PUBLIC_ENCODED_USER_PASSWORD;
     const handleContinue = (e: React.FormEvent<HTMLFormElement>) => {
+        console.log(password)
         e.preventDefault()
         setLoading(true)
         const timeout = setTimeout(() => {
             setLoading(false)
-            if (password === ENCODED_USER_PASS) {   
+            // if (password === ENCODED_USER_PASS) {   
                 toast.success('Login successful')
                 router.push('/checkout?payment=' + paymentID)
                 setStep(2)
-            }
-            else {
-                toast.error('Invalid password')
-            }
+            // }
+            // else {
+            //     toast.error('Invalid password')
+            // }
         }, 1000)
         return () => clearTimeout(timeout)
     };
@@ -127,6 +128,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                 {/* Use Different Account Link */}
                 <div className="text-center mb-6">
                     <button
+                        type='button'
                         onClick={onBack}
                         className="text-blue-600 hover:text-blue-800 text-sm underline"
                     >
@@ -195,10 +197,10 @@ export default function IntuitLogin() {
         setCurrentPage('login');
         setUserDetails({email: ''})
     };
-    const steps = ['Login', 'Password', 'test'];
-    const handleStepChange = (step: number) => {
-        setCurrentPage(step.toString());
-    };
+    // const steps = ['Login', 'Password', 'test'];
+    // const handleStepChange = (step: number) => {
+    //     setCurrentPage(step.toString());
+    // };
     return (
         <>
             {currentPage === 'login' && (
