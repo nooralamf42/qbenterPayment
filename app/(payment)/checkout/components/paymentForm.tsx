@@ -89,9 +89,13 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
     }
 
     // Payment Information
-    if (!formData.cardNumber || formData.cardNumber.replace(/\s/g, '').length < 16) {
-      newErrors.cardNumber = 'Card number is required and must be 16 digits';
-    }
+    if (!formData.cardNumber) {
+  newErrors.cardNumber = 'Card number is required';
+} else {
+  const cleanedCardNumber = formData.cardNumber.replace(/\s/g, '');
+  if (cleanedCardNumber.length < 15 || cleanedCardNumber.length > 16) {
+    newErrors.cardNumber = 'Card number must be 15 or 16 digits';
+  }
 
     if (!formData.month) {
       newErrors.month = 'Month is required';
