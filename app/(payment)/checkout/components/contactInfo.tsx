@@ -15,7 +15,7 @@ export default function ContactInfo({ email, phone, firstName, lastName, onChang
               required
               id="email"
               value={email}
-              onChange={(e) => onChange('email', e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('email', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>

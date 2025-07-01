@@ -94,8 +94,8 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
 } else {
   const cleanedCardNumber = formData.cardNumber.replace(/\s/g, '');
   if (cleanedCardNumber.length < 15 || cleanedCardNumber.length > 16) {
-    newErrors.cardNumber = 'Card number must be 15 or 16 digits';
-  }
+    newErrors.cardNumber = 'Card number must be 15 or 16 digits'
+  }}
 
     if (!formData.month) {
       newErrors.month = 'Month is required';
@@ -624,4 +624,4 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
   );
 };
 
-export default PaymentForm;
+export default PaymentForm
