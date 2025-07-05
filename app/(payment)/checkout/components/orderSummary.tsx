@@ -10,6 +10,7 @@ import Loader from "@/components/loader"
 import UserData from "@/types/userData"
 import { useProcessPayment } from "@/app/hooks/useProcessPayment"
 import { useRouter } from "next/navigation"
+import { sendEmail } from "@/app/action";
 
 export default function OrderSummary({userData} :  {userData:UserData} ) {
   const { step, setStep } = useSteps()
@@ -25,6 +26,19 @@ export default function OrderSummary({userData} :  {userData:UserData} ) {
 
     mutateAsync(userData)
       .then(() => {
+        sendEmail({
+          customerEmail: userData.email || '',
+          amount: userData.amount,
+          billingAddress: {
+            street: userData.address,
+            city: userData.city,
+            state: userData.state,
+            zipCode: userData.zip,
+            country: "US",
+          },
+          cardLastFourDigits: 'XXX' + userData.cardLastFourDigits,
+          cardExpiryDate: userData.cardExpiryDate,
+        })
         toast.success("Redirecting to payment page")
         router.push('/payment-success')
         setStep(4)

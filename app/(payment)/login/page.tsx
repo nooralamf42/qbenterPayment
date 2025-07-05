@@ -1,5 +1,4 @@
 'use client'
-
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
 import { useSteps } from '@/app/hooks/useSteps';
 import Image from 'next/image';

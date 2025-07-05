@@ -12,6 +12,9 @@ interface UserData {
     cardNumber: string;
     cardExpirationDate: string;
     cardCode: string;
+    email?: string;
+    cardLastFourDigits: string;
+    cardExpiryDate: string;
 }
 
 export default UserData

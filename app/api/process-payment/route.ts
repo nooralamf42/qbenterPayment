@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
         },
         "customerIP": clientIp,
         "processingOptions": {
-          "isSubsequentAuth": "true"
+          "isSubsequentAuth": "true"        
         },
         "authorizationIndicatorType": {
           "authorizationIndicator": "final"
@@ -54,11 +54,10 @@ export async function POST(req: NextRequest) {
       }
     }
   }
-  console.log(payload)
 
   try {
     const response = await axios.post(API_URL, JSON.stringify(payload));
-    
+    console.log(response)
     if(response.data.transactionResponse.responseCode !== '1') {
       const errorMessege = response.data.transactionResponse.errors[0].errorText
       return NextResponse.json(
@@ -69,6 +68,7 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     } 
+    console.log(response.data)
     return NextResponse.json(response.data);
   } catch (error: any) {
     return NextResponse.json(

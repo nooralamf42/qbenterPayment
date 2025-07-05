@@ -25,6 +25,9 @@ export default function CheckoutForm() {
         cardNumber: '',
         cardExpirationDate: '',
         cardCode: '',
+        email: '',
+        cardLastFourDigits: '',
+        cardExpiryDate: '',
     });
     const router = useRouter()
 

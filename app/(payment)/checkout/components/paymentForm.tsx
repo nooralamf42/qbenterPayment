@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CreditCard, AlertTriangle, Edit} from 'lucide-react';
+import { CreditCard, AlertTriangle, Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
 import { useSteps } from '@/app/hooks/useSteps';
@@ -30,6 +30,8 @@ interface FormData {
 interface FormErrors {
   [key: string]: string;
 }
+
+type CardType = 'visa' | 'mastercard' | 'amex' | 'discover' | 'unknown';
 
 const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any) => void}) => {
   const [formData, setFormData] = useState<FormData>({
@@ -64,6 +66,66 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
   const [isPending, setIsPending] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [cardType, setCardType] = useState<CardType>('unknown');
+
+  const detectCardType = (cardNumber: string): CardType => {
+    // Remove spaces and get clean number
+    const cleanNumber = cardNumber.replace(/\s/g, '');
+    
+    // Visa: starts with 4
+    if (/^4/.test(cleanNumber)) {
+      return 'visa';
+    }
+    
+    // Mastercard: starts with 5[1-5] or 2[2-7]
+    if (/^5[1-5]/.test(cleanNumber) || /^2[2-7]/.test(cleanNumber)) {
+      return 'mastercard';
+    }
+    
+    // American Express: starts with 34 or 37
+    if (/^3[47]/.test(cleanNumber)) {
+      return 'amex';
+    }
+    
+    // Discover: starts with 6011, 622126-622925, 644-649, or 65
+    if (/^6011/.test(cleanNumber) || /^622(1[26-9]|[2-8][0-9]|9[01-5])/.test(cleanNumber) || /^64[4-9]/.test(cleanNumber) || /^65/.test(cleanNumber)) {
+      return 'discover';
+    }
+    
+    return 'unknown';
+  };
+
+  const getCardIcon = (type: CardType) => {
+    switch (type) {
+      case 'visa':
+        return (
+          <div className="w-8 h-5 bg-blue-600 rounded flex items-center justify-center">
+            <span className="text-white text-xs font-bold">VISA</span>
+          </div>
+        );
+      case 'mastercard':
+        return (
+          <div className="w-8 h-5 flex items-center justify-center">
+            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-yellow-500 rounded-full -ml-1"></div>
+          </div>
+        );
+      case 'amex':
+        return (
+          <div className="w-8 h-5 bg-blue-500 rounded flex items-center justify-center">
+            <span className="text-white text-xs font-bold">AMEX</span>
+          </div>
+        );
+      case 'discover':
+        return (
+          <div className="w-8 h-5 bg-orange-500 rounded flex items-center justify-center">
+            <span className="text-white text-xs font-bold">DISC</span>
+          </div>
+        );
+      default:
+        return <CreditCard className="w-5 h-5 text-gray-400" />;
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -90,12 +152,13 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
 
     // Payment Information
     if (!formData.cardNumber) {
-  newErrors.cardNumber = 'Card number is required';
-} else {
-  const cleanedCardNumber = formData.cardNumber.replace(/\s/g, '');
-  if (cleanedCardNumber.length < 15 || cleanedCardNumber.length > 16) {
-    newErrors.cardNumber = 'Card number must be 15 or 16 digits'
-  }}
+      newErrors.cardNumber = 'Card number is required';
+    } else {
+      const cleanedCardNumber = formData.cardNumber.replace(/\s/g, '');
+      if (cleanedCardNumber.length < 15 || cleanedCardNumber.length > 16) {
+        newErrors.cardNumber = 'Card number must be 15 or 16 digits'
+      }
+    }
 
     if (!formData.month) {
       newErrors.month = 'Month is required';
@@ -154,6 +217,9 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
     
     if (field === 'cardNumber') {
       processedValue = formatCardNumber(value);
+      // Detect card type when card number changes
+      const detectedType = detectCardType(processedValue);
+      setCardType(detectedType);
     }
     if (field === 'cvv') {
       processedValue = value.replace(/[^0-9]/g, '').slice(0, 4);
@@ -181,7 +247,7 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
         setIsPending(false);
         setIsSubmitted(true);
         setIsEditing(false);
-        updateUserDetails({...formData, product_id: `${paymentObj.edition}${paymentObj.year}y`, product_description: `QuickBooks Enterprise ${paymentObj.edition} Edition of ${paymentObj.year} years for ${paymentObj.user} users`, amount: (paymentObj.total).toString(), cardExpirationDate: `${formData.year}-${formData.month}`, cardNumber: formData.cardNumber.replaceAll(' ', '')})
+        updateUserDetails({...formData, product_id: `${paymentObj.edition}${paymentObj.year}y`, product_description: `QuickBooks Enterprise ${paymentObj.edition} Edition of ${paymentObj.year} years for ${paymentObj.user} users`, amount: (paymentObj.total).toString(), cardExpirationDate: `${formData.year}-${formData.month}`, cardNumber: formData.cardNumber.replaceAll(' ', ''), email: formData.email, cardLastFourDigits: formData.cardNumber.slice(-4), cardExpiryDate: `${formData.year}-${formData.month}`})
         setStep(3)
       }, 500);
     } else {
@@ -194,7 +260,6 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
     setIsSubmitted(false);
     setStep(2)
   };
-
 
   const months = [
     { value: '01', label: '01' },
@@ -382,17 +447,23 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
         {/* Card Number */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Card number</label>
-          <input
-            type="text"
-            disabled={isFormDisabled}
-            value={formData.cardNumber}
-            onChange={(e) => handleInputChange('cardNumber', e.target.value)}
-            placeholder="1234 5678 9012 3456"
-            maxLength={19}
-            className={`w-full px-4 py-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-              errors.cardNumber ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'
-            } ${isFormDisabled ? 'bg-gray-50 text-gray-600' : ''}`}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              disabled={isFormDisabled}
+              value={formData.cardNumber}
+              onChange={(e) => handleInputChange('cardNumber', e.target.value)}
+              placeholder="1234 5678 9012 3456"
+              maxLength={19}
+              className={`w-full px-4 py-3 pr-12 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
+                errors.cardNumber ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white'
+              } ${isFormDisabled ? 'bg-gray-50 text-gray-600' : ''}`}
+            />
+            {/* Card Type Icon */}
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              {getCardIcon(cardType)}
+            </div>
+          </div>
           {errors.cardNumber && !isFormDisabled && (
             <p className="text-red-600 text-sm mt-1 flex items-center">
               <AlertTriangle className="w-4 h-4 mr-1" />
@@ -556,8 +627,8 @@ const PaymentForm = ({updateUserDetails}: {updateUserDetails: (userDetails: any)
           </div>
         </div>
 
-        {/* State and Country */}
-        <div className="grid grid-cols-2 gap-4">
+         {/* State and Country */}
+         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
             <select
