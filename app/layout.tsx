@@ -23,25 +23,25 @@ export const metadata: Metadata = {
   openGraph: {
     images: [
       {
-        url: "https://www.quickbooks-solutions.com/quickbooks_logo.svg",
+        url: "https://www.quickbooks-solutions.com/quickbooks_logo.png",
         width: 1200,
         height: 630,
         alt: "QuickBooks Enterprise"
       },
       {
-        url: "https://www.quickbooks-solutions.com/quickbooks_logo.svg",
+        url: "https://www.quickbooks-solutions.com/quickbooks_logo.png",
         width: 640,
         height: 335,
         alt: "QuickBooks Enterprise"
       },
       {
-        url: "https://www.quickbooks-solutions.com/quickbooks_logo.svg",
+        url: "https://www.quickbooks-solutions.com/quickbooks_logo.png",
         width: 440,
         height: 220,
         alt: "QuickBooks Enterprise"
       },
       {
-        url: "https://www.quickbooks-solutions.com/quickbooks_logo.svg",
+        url: "https://www.quickbooks-solutions.com/quickbooks_logo.png",
         width: 220,
         height: 110,
         alt: "QuickBooks Enterprise"
