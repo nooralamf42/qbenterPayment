@@ -52,10 +52,10 @@ export default function CheckoutForm() {
         <div className="min-h-screen py-8 px-5">
             
             <div className="max-w-7xl mx-auto">
-                <img className='max-w-[200px] mb-10 mt-5' src="/quickbooks_logo.svg" alt="" />
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Great! One last step</h1>
-                    <p className="text-gray-600">Add your billing information. You can review your cart again before you place the order</p>
+                <img className='max-w-[200px] mb-10 mt-5' src="/quickbooks_logo.svg" alt="Logo" />
+                <div className="mb-8 mt-10">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Payment</h1>
+                    <p className="text-gray-600">Enter billing information to proceed.</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

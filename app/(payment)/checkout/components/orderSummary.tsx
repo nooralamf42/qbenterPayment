@@ -17,7 +17,7 @@ export default function OrderSummary() {
     noLinkRedirection: true,
     noLoginRedir: true,
   })
-  console.log(paymentObj)
+  // console.log(paymentObj)
 
   const { userDetails } = useUserDetails()
   const { mutateAsync, isPending } = useCreateTransaction()
@@ -47,7 +47,7 @@ export default function OrderSummary() {
   if (paymentObj == null) return <Loader/>
 
   const { edition, year, total, user, disc } = paymentObj
-  console.log(edition, year)
+  // console.log(edition, year)
   const imagePath = `/${edition.toLowerCase()}_${year}y.webp`
   return (
     <div className="bg-gray-50 rounded-lg p-6 shadow-md">

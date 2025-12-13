@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(response.data);
   } catch (error: any) {
-    console.log(error)
+    // console.log(error)
     console.error('Trustap API Error:', error.response?.data || error.message);
     return NextResponse.json(
       {
