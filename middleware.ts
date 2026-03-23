@@ -2,18 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
-  // Define paths that should not be redirected
-  const isMaintenancePage = request.nextUrl.pathname === '/maintenance'
-  const isStaticAsset = request.nextUrl.pathname.startsWith('/_next') || 
-                        request.nextUrl.pathname.includes('.') // for files like favicon.ico, images, etc.
-
-  // If already on maintenance page or requesting static assets, allow
-  if (isMaintenancePage || isStaticAsset) {
-    return NextResponse.next()
-  }
-
-  // Redirect everything else to maintenance page
-  return NextResponse.redirect(new URL('/maintenance', request.url))
+  return NextResponse.next()
 }
 
 export const config = {

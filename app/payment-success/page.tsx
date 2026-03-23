@@ -2,13 +2,17 @@
 
 import { CheckCircle, MailIcon } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 
 export default function PaymentSuccessPage() {
   const params = useSearchParams();
-  const trustapUser = params.get('buyerId')?.split('state')[0]
-  const transactionId = params.get('tx_id')
-  
+
+  // ePay return URL params
+  const transID = params.get('transID')
+  const status = params.get('status')
+  const billAmt = params.get('bill_amt')
+  const billCurrency = params.get('bill_currency') || 'USD'
+  const reference = params.get('reference')
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="bg-white shadow-xl rounded-2xl p-8 max-w-xl w-full text-center">
@@ -18,24 +22,47 @@ export default function PaymentSuccessPage() {
             Payment Successful
           </h1>
           <p className="text-gray-600 mb-6">
-            Your transaction has been completed successfully. We’ve sent a confirmation email.
+            Your transaction has been completed successfully. We&apos;ve sent a confirmation email.
           </p>
 
-          <Link
-            href={`/raise-transaction-dispute?buyerId=${trustapUser}&tx_id=${transactionId}`}
-            className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200"
-          >
-            Raise a Transaction Dispute
-          </Link>
+          {/* Transaction details */}
+          {(transID || billAmt) && (
+            <div className="w-full bg-gray-50 rounded-lg p-4 mb-6 text-left text-sm text-gray-700 space-y-2">
+              {transID && (
+                <div className="flex justify-between">
+                  <span className="font-medium">Transaction ID:</span>
+                  <span className="text-gray-900 font-mono">{transID}</span>
+                </div>
+              )}
+              {status && (
+                <div className="flex justify-between">
+                  <span className="font-medium">Status:</span>
+                  <span className="text-green-600 font-semibold">{status}</span>
+                </div>
+              )}
+              {billAmt && (
+                <div className="flex justify-between">
+                  <span className="font-medium">Amount:</span>
+                  <span className="text-gray-900">{billCurrency} {billAmt}</span>
+                </div>
+              )}
+              {reference && (
+                <div className="flex justify-between">
+                  <span className="font-medium">Reference:</span>
+                  <span className="text-gray-500 font-mono text-xs">{reference}</span>
+                </div>
+              )}
+            </div>
+          )}
 
-          <div className="mt-8 text-sm text-gray-500">
-            <p className="mb-1">Need immediate help?</p>
+          <div className="mt-4 text-sm text-gray-500">
+            <p className="mb-1">Need help with your order?</p>
             <a
-              href="mailto:support@trustap.com"
+              href="mailto:support@quickbooks-solutions.com"
               className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
             >
               <MailIcon className="w-4 h-4" />
-              support@trustap.com
+              support@quickbooks-solutions.com
             </a>
           </div>
         </div>

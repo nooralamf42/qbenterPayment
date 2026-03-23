@@ -12,8 +12,7 @@ const userDetailsAtom = atom({
     city : '',
     state : '',
     zipCode : '',
-    deposit_price: 0,
-    deposit_charge:0,
+    country : '',
     guestUserId : '',
 })
 

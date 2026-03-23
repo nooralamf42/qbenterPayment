@@ -1,13 +1,12 @@
 'use client'
 
-import { useCreateFee } from '@/app/hooks/useCreateFee';
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
 import { useSteps } from '@/app/hooks/useSteps';
 import { useUserDetails } from '@/app/hooks/useUserDetails';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 
 // Login Page Component
@@ -88,29 +87,19 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
     const [showPassword, setShowPassword] = useState(false);
     const router = useRouter()
     const {setStep} = useSteps()
-    const {setUserDetails} = useUserDetails()
-    
-    const {paymentObj} = useParamPaymentDetails({noLinkRedirection: true, enableToast: false, noLoginRedir:true})
 
-    const { mutateAsync, isPending } = useCreateFee();
+    useParamPaymentDetails({noLinkRedirection: true, enableToast: false, noLoginRedir: true})
 
     const handleContinue = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        if(!paymentID){
+        if (!paymentID) {
             toast.error('Internal Server Error')
             return
         }
         if (password) {
-            mutateAsync((Math.floor(paymentObj.total))).then((data)=>{
-                console.log(data)
-            setUserDetails({deposit_price: data.price, deposit_charge: data.charge})
             setStep(2)
             toast.success('Login successful')
             router.push('/checkout?payment=' + paymentID)
-            }).catch((error)=>{
-                console.log(error)
-                toast.error("Internal Server Error! Try again")
-            })
         }
     };
     
@@ -174,11 +163,10 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
 
                 {/* Continue Button */}
                 <button
-                    disabled={isPending}
                     type='submit'
                     className="w-full bg-[#2ca01c] hover:bg-[#2CA01C] text-white py-3 px-4 rounded font-medium transition-colors duration-200 mb-6"
                 >
-                    {isPending ? 'Continuing...' : 'Continue'}
+                    Continue
                 </button>
             </form>
         </div>
