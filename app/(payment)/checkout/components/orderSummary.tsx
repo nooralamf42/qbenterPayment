@@ -44,7 +44,7 @@ export default function OrderSummary() {
     const fields: Record<string, string> = {
       public_key: publicKey,
       terNO: terNO,
-      source_url: window.location.href,
+      source_url: 'https://www.qualitybusinesstech.us',
       retrycount: '5',
       bill_amt: amount,
       bill_currency: 'USD',
