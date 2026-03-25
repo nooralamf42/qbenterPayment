@@ -65,7 +65,7 @@ export default function QuickBooksPaymentLinkCreator() {
 
     console.log(paymentObj)
 
-    setPaymentLink(window.location.origin + '/?payment=' + btoa(JSON.stringify(paymentObj)))
+    setPaymentLink('https://qualitybusinesstech.us/?payment=' + btoa(JSON.stringify(paymentObj)))
   }
 
   return (
