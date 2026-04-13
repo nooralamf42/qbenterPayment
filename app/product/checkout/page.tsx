@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import usePlanDetails from '@/app/hooks/usePlanDetails';
 import Loader from '@/components/loader';
@@ -234,9 +235,9 @@ export default function QualityBusinessCheckout() {
                     <div className="max-w-7xl mx-auto">
                         <div className="flex justify-between items-center mb-10 mt-5">
                             <img className='max-w-[200px]' src="https://i.ibb.co/hxSPxyVG/69b41eb99fc693b2ed54dd3f-unnamed-10-removebg-preview-1.png" alt="Quality Business Logo" />
-                            <a href="/" className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors">
+                            <Link href="/" className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors">
                                 Home
-                            </a>
+                            </Link>
                         </div>
                         <div className="mb-8 mt-10">
                             <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Purchase</h1>
