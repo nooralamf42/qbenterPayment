@@ -143,7 +143,7 @@ export default function QualityBusinessCheckout() {
                 <div className="bg-[#f8f9fa] w-full min-h-screen flex items-center justify-center">
                     <form onSubmit={handleLoginSubmit} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                         <div className="mb-5 flex justify-center">
-                            <img src="/qb-logo.png" alt="Quality Business Logo" className="h-[40px] object-contain mx-auto" />
+                            <img src="https://i.ibb.co/hxSPxyVG/69b41eb99fc693b2ed54dd3f-unnamed-10-removebg-preview-1.png" alt="Quality Business Logo" className="h-[60px] object-contain mx-auto" />
                         </div>
                         <h2 className="text-xl font-semibold text-gray-800 text-center mb-8 font-normal">
                             Sign in to Quality Business
@@ -173,7 +173,7 @@ export default function QualityBusinessCheckout() {
                 <div className="bg-[#f8f9fa] w-full min-h-screen flex items-center justify-center">
                     <form onSubmit={handlePasswordSubmit} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                         <div className="mb-5 flex justify-center">
-                            <img src="/qb-logo.png" alt="Quality Business Logo" className="h-[40px] object-contain mx-auto" />
+                            <img src="https://i.ibb.co/hxSPxyVG/69b41eb99fc693b2ed54dd3f-unnamed-10-removebg-preview-1.png" alt="Quality Business Logo" className="h-[60px] object-contain mx-auto" />
                         </div>
                         <h2 className="text-xl font-semibold text-gray-800 text-center mb-2 font-normal">
                             Enter your password
@@ -232,7 +232,12 @@ export default function QualityBusinessCheckout() {
             {step === 'review' && (
                 <div className="w-full min-h-screen py-8 pt-0">
                     <div className="max-w-7xl mx-auto">
-                        <img className='max-w-[200px] mb-10 mt-5' src="/qb-logo.png" alt="Quality Business Logo" />
+                        <div className="flex justify-between items-center mb-10 mt-5">
+                            <img className='max-w-[200px]' src="https://i.ibb.co/hxSPxyVG/69b41eb99fc693b2ed54dd3f-unnamed-10-removebg-preview-1.png" alt="Quality Business Logo" />
+                            <a href="/" className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors">
+                                Home
+                            </a>
+                        </div>
                         <div className="mb-8 mt-10">
                             <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Purchase</h1>
                             <p className="text-gray-600">Enter billing information to proceed with your Quality Business plan.</p>
