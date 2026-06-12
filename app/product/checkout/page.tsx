@@ -144,7 +144,13 @@ export default function QualityBusinessCheckout() {
                 <div className="bg-[#f8f9fa] w-full min-h-screen flex items-center justify-center">
                     <form onSubmit={handleLoginSubmit} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                         <div className="mb-5 flex justify-center">
-                            <img src="https://i.ibb.co/hxSPxyVG/69b41eb99fc693b2ed54dd3f-unnamed-10-removebg-preview-1.png" alt="Quality Business Logo" className="h-[60px] object-contain mx-auto" />
+                            <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
+                                <img 
+                                    src="/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
+                                    alt="Quality Business Logo" 
+                                    className="w-[310px] max-w-none h-auto" 
+                                />
+                            </div>
                         </div>
                         <h2 className="text-xl font-semibold text-gray-800 text-center mb-8 font-normal">
                             Sign in to Quality Business
@@ -174,7 +180,13 @@ export default function QualityBusinessCheckout() {
                 <div className="bg-[#f8f9fa] w-full min-h-screen flex items-center justify-center">
                     <form onSubmit={handlePasswordSubmit} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                         <div className="mb-5 flex justify-center">
-                            <img src="https://i.ibb.co/hxSPxyVG/69b41eb99fc693b2ed54dd3f-unnamed-10-removebg-preview-1.png" alt="Quality Business Logo" className="h-[60px] object-contain mx-auto" />
+                            <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
+                                <img 
+                                    src="/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
+                                    alt="Quality Business Logo" 
+                                    className="w-[310px] max-w-none h-auto" 
+                                />
+                            </div>
                         </div>
                         <h2 className="text-xl font-semibold text-gray-800 text-center mb-2 font-normal">
                             Enter your password
@@ -234,7 +246,13 @@ export default function QualityBusinessCheckout() {
                 <div className="w-full min-h-screen py-8 pt-0">
                     <div className="max-w-7xl mx-auto">
                         <div className="flex justify-between items-center mb-10 mt-5">
-                            <img className='max-w-[200px]' src="https://i.ibb.co/hxSPxyVG/69b41eb99fc693b2ed54dd3f-unnamed-10-removebg-preview-1.png" alt="Quality Business Logo" />
+                            <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
+                                <img 
+                                    src="/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
+                                    alt="Quality Business Logo" 
+                                    className="w-[310px] max-w-none h-auto" 
+                                />
+                            </div>
                             <Link href="/" className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium transition-colors">
                                 Home
                             </Link>

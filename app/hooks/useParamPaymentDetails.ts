@@ -21,6 +21,10 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
   }
 
   useEffect(() => {
+    if (searchParams.get('plan')) {
+      return
+    }
+
     if (!paymentBase64) {
       if (enableToast) toast.error('No payment link found')
       setPaymentObj({ error: 'No payment link found' })
@@ -32,14 +36,7 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
       const parsed = JSON.parse(atob(paymentBase64))
       console.log(parsed)
       setPaymentObj({...parsed, total: parsed.total*100})
-      // ✅ Only push if needed — prevent redirect loop
-      const timeDiff = Date.now() - parsed.time
-      if(timeDiff > LINK_EXPIRY_MINUTES * 60 * 1000){
-        if (enableToast) toast.error('Payment link expired')
-        setPaymentObj({ error: 'Payment link expired' })
-        if (!noLinkRedirection) router.push('/link-expired')
-        return
-      }
+      // ✅ Only push if needed — prevent redirect loop (link expiration timeout check removed)
       if(!noLoginRedir) router.push('/login?payment=' + paymentBase64)
 
     } catch (error) {
@@ -47,7 +44,7 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
       setPaymentObj({ error: 'Invalid payment link' })
       if (!noLinkRedirection) router.push('/broken-link')
     }
-  }, [paymentBase64, router])
+  }, [paymentBase64, router, searchParams, noLoginRedir, noLinkRedirection, enableToast])
 
   return { paymentObj:paymentObj as PaymentDetails, paymentBase64 }
 }

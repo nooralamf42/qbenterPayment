@@ -5,7 +5,7 @@ import toast from "react-hot-toast"
 export const PLANS = {
   foundation: {
     name: "Foundation",
-    price: 2499,
+    price: 1499,
     description: "Perfect for landing pages and personal portfolios",
     features: [
       "Lightning-fast performance",

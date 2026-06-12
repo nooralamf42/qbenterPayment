@@ -6,7 +6,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Stepper() {
-  const {step}  = useSteps()
+  const {step, setStep}  = useSteps()
   const currentStep = step
   const steps = [
     "Login",
@@ -44,6 +44,17 @@ export default function Stepper() {
   const pathName = usePathname()
   const searchParams = useSearchParams()
   useEffect(()=>{
+    const planParam = searchParams.get('plan')
+    if (planParam) {
+      if (step === 0) {
+        router.push('/login?plan=' + planParam)
+      }
+      if (step === 2) {
+        router.push('/checkout?plan=' + planParam)
+      }
+      return
+    }
+
     const paymentID = searchParams.get('payment')
     if(step===0){
       router.push('/login?payment=' + paymentID)
@@ -52,7 +63,10 @@ export default function Stepper() {
       if(paymentID) router.push('/checkout?payment=' + paymentID)
       else router.push('/broken-link')
     }
-  },[pathName])
+  },[pathName, step, searchParams, router])
+
+  const planParam = searchParams.get('plan')
+  const isPlan = planParam && ['foundation', 'growth', 'enterprise'].includes(planParam.toLowerCase());
 
   return (
     <div className="w-full bg-secondary px-5 py-10">
@@ -69,7 +83,7 @@ export default function Stepper() {
                 !isLast 
                   ? `after:content-[''] w-full after:w-full after:h-1 after:border-b after:border-4 after:inline-block ${
                       status === 'completed' 
-                        ? 'after:border-[#2ca01c]' 
+                        ? (isPlan ? 'after:border-black' : 'after:border-[#2ca01c]') 
                         : 'after:border-gray-400'
                     }`
                   : 'w-fit'
@@ -80,9 +94,9 @@ export default function Stepper() {
                 disabled={stepNumber > currentStep + 1}
                 className={`flex relative items-center justify-center w-10 h-10 lg:h-12 lg:w-12 rounded-full shrink-0 transition-all duration-200 ring-4 ${
                   status === 'completed'
-                    ? 'bg-[#2ca01c] text-white hover:[#2ca01c] ring-green-500 cursor-pointer'
+                    ? (isPlan ? 'bg-black text-white hover:bg-black ring-black cursor-pointer' : 'bg-[#2ca01c] text-white hover:bg-[#2ca01c] ring-green-500 cursor-pointer')
                     : status === 'current'
-                    ? ' text-[#2ca01c]  ring-4 ring-[#2ca01c]'
+                    ? (isPlan ? 'text-black ring-4 ring-black' : 'text-[#2ca01c] ring-4 ring-[#2ca01c]')
                     : 'bg-gray-100 text-gray-500 ring-gray-400 cursor-not-allowed'
                 } ${
                   stepNumber <= currentStep + 1 && status !== 'pending'

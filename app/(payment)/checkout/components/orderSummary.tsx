@@ -8,9 +8,21 @@ import toast from "react-hot-toast"
 import { PhotoProvider, PhotoView } from 'react-photo-view'
 import 'react-photo-view/dist/react-photo-view.css'
 import Loader from "@/components/loader"
+import { useSearchParams } from "next/navigation"
+import usePlanDetails from "@/app/hooks/usePlanDetails"
 
 export default function OrderSummary() {
   const { step } = useSteps()
+  const searchParams = useSearchParams()
+  const planParam = searchParams.get('plan')
+  const isValidPlan = planParam && ['foundation', 'growth', 'enterprise'].includes(planParam.toLowerCase())
+
+  const { planObj } = usePlanDetails({
+    enableToast: false,
+    noLinkRedirection: true,
+    noLoginRedir: true,
+  })
+
   const { paymentObj } = useParamPaymentDetails({
     enableToast: false,
     noLinkRedirection: true,
@@ -29,10 +41,24 @@ export default function OrderSummary() {
       return
     }
 
-    const amount = (paymentObj.total / 100).toFixed(2)
-    const productName = `QuickBooks Enterprise ${paymentObj.edition} Edition`
+    let amount = ""
+    let productName = ""
+    let reference = ""
+
+    if (isValidPlan && planObj) {
+      amount = planObj.price.toFixed(2)
+      productName = `Quality Business - ${planObj.name} Plan`
+      reference = String(Date.now())
+    } else if (paymentObj) {
+      amount = (paymentObj.total / 100).toFixed(2)
+      productName = `QuickBooks Enterprise ${paymentObj.edition} Edition`
+      reference = String(paymentObj.time)
+    } else {
+      toast.error('Invalid payment details.')
+      return
+    }
+
     const fullName = `${userDetails.firstName || ''} ${userDetails.lastName || ''}`.trim()
-    const reference = String(paymentObj.time)
 
     // Build and submit a hidden form to ePay checkout (per ePay developer docs)
     const form = document.createElement('form')
@@ -76,7 +102,70 @@ export default function OrderSummary() {
     form.submit()
   }
 
-  if (paymentObj == null) return <Loader/>
+  if (isValidPlan) {
+    if (planObj == null) return <Loader />
+  } else {
+    if (paymentObj == null) return <Loader />
+  }
+
+  if (isValidPlan && planObj) {
+    const { name, price, description, features, popular } = planObj
+
+    return (
+      <div className="bg-gray-50 rounded-lg p-6 shadow-md border border-gray-100 font-sans text-gray-900">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
+
+        <div className="flex flex-col space-y-6">
+          <div>
+            <div className="flex justify-between items-start">
+              <h3 className="font-semibold text-lg text-gray-900">
+                {name} Plan
+              </h3>
+              <div className="text-right">
+                <span className="text-2xl font-bold tracking-tight text-gray-900">${price}</span>
+                <span className="text-xs text-gray-500 block">per year</span>
+              </div>
+            </div>
+            {popular && (
+              <span className="inline-block mt-2 bg-black text-white text-xs font-bold px-2 py-1 rounded border border-white">Most Popular</span>
+            )}
+          </div>
+
+          <p className="text-sm text-gray-600">
+            {description}
+          </p>
+
+          <div className="space-y-3 pb-4">
+            <p className="font-semibold text-sm text-gray-900">What's included?</p>
+            {features.map((feature: string, idx: number) => (
+              <div key={idx} className="flex items-start">
+                <span className="mr-2 text-gray-400">•</span>
+                <span className="text-sm text-gray-600">{feature}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-semibold text-gray-900">Total due today</span>
+              <span className="text-xl font-bold text-gray-900">${price}</span>
+            </div>
+          </div>
+
+          {step === 3 && (
+            <button
+              onClick={handlePaymentClick}
+              className={`mt-6 w-full text-white px-6 py-3 rounded-md font-medium transition-colors cursor-pointer text-center text-md ${
+                isValidPlan ? 'bg-black hover:bg-gray-800' : 'bg-[#2ca01c] hover:bg-[#228c15]'
+              }`}
+            >
+              Pay Now
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   const { edition, year, total, user, disc } = paymentObj
   const imagePath = `/${edition.toLowerCase()}_${year}y.webp`

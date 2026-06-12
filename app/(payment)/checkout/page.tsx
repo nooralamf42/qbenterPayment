@@ -6,13 +6,17 @@ import ContactInfo from './components/contactInfo';
 import OrderSummary from './components/orderSummary';
 import BusinessAddress from './components/businessAddress';
 import { useUserDetails } from '@/app/hooks/useUserDetails';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSteps } from '@/app/hooks/useSteps';
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
 import { useCreateGuestUser } from '@/app/hooks/useCreateGuestUser';
 import toast from 'react-hot-toast';
 
 export default function CheckoutForm() {
+    const searchParams = useSearchParams()
+    const planParam = searchParams.get('plan')
+    const isValidPlan = planParam && ['foundation', 'growth', 'enterprise'].includes(planParam.toLowerCase())
+
     const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true , noLoginRedir:true})
     const {setStep, step} = useSteps()
     const {setUserDetails, userDetails} = useUserDetails()
@@ -52,10 +56,31 @@ export default function CheckoutForm() {
         <div className="min-h-screen py-8 px-5">
             
             <div className="max-w-7xl mx-auto">
-                <img className='max-w-[200px] mb-10 mt-5' src="https://www.quickbooks-enterprises.com/quickbooks_logo.png" alt="Logo" />
+                {isValidPlan ? (
+                    <div className="overflow-hidden w-[240px] h-[65px] mb-8 mt-5 flex items-center justify-center relative">
+                        <img 
+                            src="/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
+                            alt="Quality Business Logo" 
+                            className="w-[310px] max-w-none h-auto" 
+                        />
+                    </div>
+                ) : (
+                    <img 
+                        className='max-w-[200px] mb-10 mt-5 object-contain' 
+                        src="https://www.quickbooks-enterprises.com/quickbooks_logo.png" 
+                        alt="Logo" 
+                    />
+                )}
                 <div className="mb-8 mt-10">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Payment</h1>
-                    <p className="text-gray-600">Enter billing information to proceed.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                        {isValidPlan ? 'Complete Your Purchase' : 'Complete Your Payment'}
+                    </h1>
+                    <p className="text-gray-600">
+                        {isValidPlan 
+                            ? 'Enter billing information to proceed with your Quality Business plan.' 
+                            : 'Enter billing information to proceed.'
+                        }
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -93,7 +118,9 @@ export default function CheckoutForm() {
                                 (<button
                                     disabled={isPending}
                                     type="submit"
-                                    className="mt-8 bg-[#2ca01c] hover:bg-[#2ca01c] text-white px-6 py-2 rounded-md font-medium transition-colors cursor-pointer"
+                                    className={`mt-8 text-white px-6 py-2 rounded-md font-medium transition-colors cursor-pointer ${
+                                        isValidPlan ? 'bg-black hover:bg-gray-800' : 'bg-[#2ca01c] hover:bg-[#2ca01c]'
+                                    }`}
                                 >
                                     {isPending ? 'Saving...' : 'Save'}
                                 </button>)
