@@ -33,7 +33,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                     {isPlan ? (
                         <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
                             <img 
-                                src="/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
+                                src="https://cdn.prod.website-files.com/698b7c9f3439798abd8f9be1/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
                                 alt="Quality Business Logo" 
                                 className="w-[310px] max-w-none h-auto" 
                             />
@@ -175,7 +175,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                     {isPlan ? (
                         <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
                             <img 
-                                src="/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
+                                src="https://cdn.prod.website-files.com/698b7c9f3439798abd8f9be1/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
                                 alt="Quality Business Logo" 
                                 className="w-[310px] max-w-none h-auto" 
                             />
