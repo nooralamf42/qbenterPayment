@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import Loader from '@/components/loader';
 
 // Login Page Component
 const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
@@ -273,8 +274,12 @@ export default function IntuitLogin() {
         noLoginRedir: isPlan ? true : false
     })
     const [currentPage, setCurrentPage] = useState('login');
-    const {setStep} = useSteps()
+    const {setStep, step} = useSteps()
     const {setUserDetails, userDetails} = useUserDetails()
+    
+    if (step === 2) {
+        return <Loader />;
+    }
     
     const handleNext = (email: string) => {
         setUserDetails({email})

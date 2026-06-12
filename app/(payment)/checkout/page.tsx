@@ -11,6 +11,7 @@ import { useSteps } from '@/app/hooks/useSteps';
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
 import { useCreateGuestUser } from '@/app/hooks/useCreateGuestUser';
 import toast from 'react-hot-toast';
+import Loader from '@/components/loader';
 
 export default function CheckoutForm() {
     const searchParams = useSearchParams()
@@ -19,6 +20,10 @@ export default function CheckoutForm() {
 
     const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true , noLoginRedir:true})
     const {setStep, step} = useSteps()
+
+    if (step < 2) {
+        return <Loader />;
+    }
     const {setUserDetails, userDetails} = useUserDetails()
     const [formData, setFormData] = useState({
         companyName: '',
