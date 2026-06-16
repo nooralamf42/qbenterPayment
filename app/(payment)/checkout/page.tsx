@@ -63,7 +63,6 @@ export default function CheckoutForm() {
         <div className="min-h-screen py-8 px-5">
             
             <div className="max-w-7xl mx-auto">
-                {isValidPlan ? (
                     <div className="overflow-hidden w-[240px] h-[65px] mb-8 mt-5 flex items-center justify-center relative">
                         <img 
                             src="https://cdn.prod.website-files.com/698b7c9f3439798abd8f9be1/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
@@ -71,13 +70,6 @@ export default function CheckoutForm() {
                             className="w-[310px] max-w-none h-auto" 
                         />
                     </div>
-                ) : (
-                    <img 
-                        className='max-w-[200px] mb-10 mt-5 object-contain' 
-                        src="https://www.quickbooks-enterprises.com/quickbooks_logo.png" 
-                        alt="Logo" 
-                    />
-                )}
                 <div className="mb-8 mt-10">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
                         {isValidPlan ? 'Complete Your Purchase' : 'Complete Your Payment'}
@@ -125,9 +117,7 @@ export default function CheckoutForm() {
                                 (<button
                                     disabled={isPending}
                                     type="submit"
-                                    className={`mt-8 text-white px-6 py-2 rounded-md font-medium transition-colors cursor-pointer ${
-                                        isValidPlan ? 'bg-black hover:bg-gray-800' : 'bg-[#2ca01c] hover:bg-[#2ca01c]'
-                                    }`}
+                                    className={`mt-8 text-white px-6 py-2 rounded-md font-medium transition-colors cursor-pointer bg-black hover:bg-gray-800`}
                                 >
                                     {isPending ? 'Saving...' : 'Save'}
                                 </button>)

@@ -156,9 +156,7 @@ export default function OrderSummary() {
           {step === 3 && (
             <button
               onClick={handlePaymentClick}
-              className={`mt-6 w-full text-white px-6 py-3 rounded-md font-medium transition-colors cursor-pointer text-center text-md ${
-                isValidPlan ? 'bg-black hover:bg-gray-800' : 'bg-[#2ca01c] hover:bg-[#228c15]'
-              }`}
+              className="mt-6 w-full text-white px-6 py-3 rounded-md font-medium transition-colors cursor-pointer text-center text-md bg-black hover:bg-gray-800"
             >
               Pay Now
             </button>
@@ -222,7 +220,7 @@ export default function OrderSummary() {
         {step === 3 && (
           <button
             onClick={handlePaymentClick}
-            className="mt-8 w-full bg-[#2ca01c] hover:bg-[#228c15] text-white px-6 py-2 rounded-md font-medium transition-colors"
+            className="mt-8 w-full bg-black hover:bg-gray-800 text-white px-6 py-2 rounded-md font-medium transition-colors"
           >
             Pay Now
           </button>

@@ -83,7 +83,7 @@ export default function Stepper() {
                 !isLast 
                   ? `after:content-[''] w-full after:w-full after:h-1 after:border-b after:border-4 after:inline-block ${
                       status === 'completed' 
-                        ? (isPlan ? 'after:border-black' : 'after:border-[#2ca01c]') 
+                        ? 'after:border-black' 
                         : 'after:border-gray-400'
                     }`
                   : 'w-fit'
@@ -94,9 +94,9 @@ export default function Stepper() {
                 disabled={stepNumber > currentStep + 1}
                 className={`flex relative items-center justify-center w-10 h-10 lg:h-12 lg:w-12 rounded-full shrink-0 transition-all duration-200 ring-4 ${
                   status === 'completed'
-                    ? (isPlan ? 'bg-black text-white hover:bg-black ring-black cursor-pointer' : 'bg-[#2ca01c] text-white hover:bg-[#2ca01c] ring-green-500 cursor-pointer')
+                    ? 'bg-black text-white hover:bg-black ring-black cursor-pointer'
                     : status === 'current'
-                    ? (isPlan ? 'text-black ring-4 ring-black' : 'text-[#2ca01c] ring-4 ring-[#2ca01c]')
+                    ? 'text-black ring-4 ring-black'
                     : 'bg-gray-100 text-gray-500 ring-gray-400 cursor-not-allowed'
                 } ${
                   stepNumber <= currentStep + 1 && status !== 'pending'
@@ -155,7 +155,7 @@ export default function Stepper() {
           className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
             currentStep === steps.length
               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-[#2ca01c] text-white hover:[#2ca01c] dark:bg-blue-800 dark:hover:[#2ca01c]'
+              : 'bg-black text-white hover:bg-black dark:bg-black dark:hover:bg-black'
           }`}
         >
           {currentStep === steps.length ? 'Complete' : 'Next'}

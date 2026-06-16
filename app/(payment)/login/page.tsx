@@ -31,7 +31,6 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
             <form onSubmit={handleSignIn} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
                 <div className="mb-5 flex justify-center">
-                    {isPlan ? (
                         <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
                             <img 
                                 src="https://cdn.prod.website-files.com/698b7c9f3439798abd8f9be1/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
@@ -39,15 +38,6 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                                 className="w-[310px] max-w-none h-auto" 
                             />
                         </div>
-                    ) : (
-                        <img 
-                            src="https://www.quickbooks-enterprises.com/quickbooks_logo.png" 
-                            className='mx-auto object-contain' 
-                            alt="Logo" 
-                            width={200} 
-                            height={100} 
-                        />
-                    )}
                 </div>
 
                 {/* Title */}
@@ -63,9 +53,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                         value={email}
                         required
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 ${
-                            isPlan ? 'border-black focus:border-gray-500' : 'border-2 border-[#2ca01c] focus:border-blue-500'
-                        }`}
+                        className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 border-black focus:border-gray-500`}
                     />
                 </div>
 
@@ -76,9 +64,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                         id="remember"
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
-                        className={`w-4 h-4 bg-gray-100 border-gray-300 rounded ${
-                            isPlan ? 'text-black focus:ring-black' : 'text-[#2ca01c] focus:ring-[#2ca01c]'
-                        }`}
+                        className={`w-4 h-4 bg-gray-100 border-gray-300 rounded text-black focus:ring-black`}
                     />
                     <label htmlFor="remember" className="ml-3 text-gray-700">
                         Remember me
@@ -88,9 +74,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                 {/* Sign In Button */}
                 <button
                     type='submit'  
-                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 flex items-center justify-center ${
-                        isPlan ? 'bg-black hover:bg-gray-800' : 'bg-[#2ca01c] hover:bg-[#2CA01C]'
-                    }`}
+                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 flex items-center justify-center bg-black hover:bg-gray-800`}
                 >
                     <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
@@ -173,7 +157,6 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
             <form onSubmit={handleContinue} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
                 <div className="mb-5 flex justify-center">
-                    {isPlan ? (
                         <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
                             <img 
                                 src="https://cdn.prod.website-files.com/698b7c9f3439798abd8f9be1/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
@@ -181,15 +164,6 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                                 className="w-[310px] max-w-none h-auto" 
                             />
                         </div>
-                    ) : (
-                        <img 
-                            src="https://www.quickbooks-enterprises.com/quickbooks_logo.png" 
-                            className='mx-auto object-contain' 
-                            alt="Logo" 
-                            width={200} 
-                            height={100} 
-                        />
-                    )}
                 </div>
 
                 {/* Title */}
@@ -224,9 +198,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 pr-12 ${
-                                isPlan ? 'border-black focus:border-gray-500' : 'border-[#2ca01c] focus:border-blue-500'
-                            }`}
+                            className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 pr-12 border-black focus:border-gray-500`}
                         />
                         <button
                             type="button"
@@ -250,9 +222,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                 {/* Continue Button */}
                 <button
                     type='submit'
-                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 mb-6 ${
-                        isPlan ? 'bg-black hover:bg-gray-800' : 'bg-[#2ca01c] hover:bg-[#2CA01C]'
-                    }`}
+                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 mb-6 bg-black hover:bg-gray-800`}
                 >
                     Continue
                 </button>

@@ -119,7 +119,7 @@ const AdminLogin = () => {
                         placeholder="Enter Admin Password"
                         value={password}
                         onChange={handlePasswordChange}
-                        className="w-full px-4 py-3 border-2 border-[#2ca01c] rounded focus:outline-none focus:border-blue-500 text-gray-700 pr-12"
+                        className="w-full px-4 py-3 border-2 border-black rounded focus:outline-none focus:border-gray-500 text-gray-700 pr-12"
                         disabled={isLoading}
                         autoComplete="current-password"
                     />
@@ -153,7 +153,7 @@ const AdminLogin = () => {
                 <button
                     type='submit'
                     disabled={isLoading}
-                    className="w-full bg-[#2ca01c] hover:bg-[#2CA01C] disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded font-medium transition-colors duration-200 flex items-center justify-center"
+                    className="w-full bg-black hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded font-medium transition-colors duration-200 flex items-center justify-center"
                 >
                     {isLoading ? (
                         <>
