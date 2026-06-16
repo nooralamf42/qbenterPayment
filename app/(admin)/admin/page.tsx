@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
+import { getAssetUrl } from '@/app/lib/getAssetUrl';
 
 const AdminLogin = () => {
     // Base64 encoded admin password
@@ -104,7 +105,7 @@ const AdminLogin = () => {
         <div className="mt-20 flex items-center justify-center p-4">
             <form onSubmit={handleSignIn} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 <div className="mb-5">
-                    <Image src="/logo.svg" className='mx-auto' alt="Intuit Logo" width={100} height={100} />
+                    <Image src={getAssetUrl("/logo.svg")} className='mx-auto' alt="Intuit Logo" width={100} height={100} />
                 </div>
 
                 <h2 className="text-xl font-semibold text-gray-800 text-center mb-8 font-normal">

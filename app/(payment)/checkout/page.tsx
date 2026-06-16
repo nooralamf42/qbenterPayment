@@ -21,9 +21,7 @@ export default function CheckoutForm() {
     const {paymentObj} = useParamPaymentDetails({enableToast: false, noLinkRedirection: true , noLoginRedir:true})
     const {setStep, step} = useSteps()
 
-    if (step < 2) {
-        return <Loader />;
-    }
+
     const {setUserDetails, userDetails} = useUserDetails()
     const [formData, setFormData] = useState({
         companyName: '',
@@ -46,6 +44,10 @@ export default function CheckoutForm() {
     };
 
     const {mutateAsync, isPending, isSuccess} = useCreateGuestUser()
+
+    if (step < 2) {
+        return <Loader />;
+    }
     const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         mutateAsync({firstName: formData.firstName, lastName: formData.lastName, email: formData.email}).then((res) => {

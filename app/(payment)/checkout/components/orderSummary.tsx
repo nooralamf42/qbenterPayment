@@ -10,6 +10,7 @@ import 'react-photo-view/dist/react-photo-view.css'
 import Loader from "@/components/loader"
 import { useSearchParams } from "next/navigation"
 import usePlanDetails from "@/app/hooks/usePlanDetails"
+import { getAssetUrl } from "@/app/lib/getAssetUrl"
 
 export default function OrderSummary() {
   const { step } = useSteps()
@@ -168,7 +169,7 @@ export default function OrderSummary() {
   }
 
   const { edition, year, total, user, disc } = paymentObj
-  const imagePath = `/${edition.toLowerCase()}_${year}y.webp`
+  const imagePath = getAssetUrl(`/${edition.toLowerCase()}_${year}y.webp`)
 
   return (
     <div className="bg-gray-50 rounded-lg p-6 shadow-md">
