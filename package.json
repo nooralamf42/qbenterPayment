@@ -10,15 +10,22 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^7.1.0",
+    "@stripe/stripe-js": "^10.3.0",
     "@tanstack/react-query": "^5.80.6",
     "axios": "^1.9.0",
     "jotai": "^2.12.5",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.513.0",
+    "mongodb": "^7.9.1",
     "next": "16.4.5",
+    "nuqs": "^2.10.3",
+    "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
-    "react-photo-view": "^1.2.7"
+    "react-photo-view": "^1.2.7",
+    "react-signature-canvas": "^1.1.0-alpha.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -27,6 +34,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-signature-canvas": "^1.0.7",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
     "tailwindcss": "^4",

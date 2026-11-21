@@ -167,7 +167,8 @@ export default function OrderSummary() {
   }
 
   const { edition, year, total, user, disc } = paymentObj
-  const imagePath = getAssetUrl(`/${edition.toLowerCase()}_${year}y.webp`)
+  const editionStr = edition || 'silver'
+  const imagePath = getAssetUrl(`/${editionStr.toLowerCase()}_${year}y.webp`)
 
   return (
     <div className="bg-gray-50 rounded-lg p-6 shadow-md">

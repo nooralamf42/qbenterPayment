@@ -2,23 +2,40 @@ import toast from "react-hot-toast"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
-const LINK_EXPIRY_MINUTES = 30
+export interface PaymentDetails {
+  user?: number,
+  edition?: string,
+  year?: number,
+  disc: number,
+  total: number,
+  gateway?: string,
+  time: number,
+  isService?: boolean,
+  serviceName?: string
+}
+
+export const SERVICES = [
+  { code: 'a', name: 'Strategic Mobile Consulting' },
+  { code: 'b', name: 'Mobile Application Porting' },
+  { code: 'c', name: 'Technology Outsourcing' },
+  { code: 'd', name: 'UI/UX Design' },
+  { code: 'e', name: 'Ecommerce App Development' },
+  { code: 'f', name: 'Startup app development' },
+  { code: 'g', name: 'Custom CRM Development' },
+  { code: 'h', name: 'SaaS App Development' },
+  { code: 'i', name: 'Offshore Development Center' },
+  { code: 'j', name: 'Product Engineering Services' },
+  { code: 'k', name: 'IT Staff Augmentation' },
+  { code: 'l', name: 'Dedicated Development Team' },
+  { code: 'm', name: 'PAYROLL' },
+  { code: 'n', name: 'Outstanding Balance Payment' },
+];
 
 const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }: { noLinkRedirection: boolean, enableToast: boolean, noLoginRedir?: boolean}) => {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const paymentBase64 = searchParams.get('payment')
+  const paymentBase64 = searchParams.get('token') || searchParams.get('payment')
   const [paymentObj, setPaymentObj] = useState<any>(null)
-  
-
-  interface PaymentDetails {
-    user: number,
-    edition: string,
-    year: number,
-    disc: number,
-    total: number,
-    time: number
-  }
 
   useEffect(() => {
     if (searchParams.get('plan')) {
@@ -33,11 +50,70 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
     }
 
     try {
-      const parsed = JSON.parse(atob(paymentBase64))
-      console.log(parsed)
+      let decodedString = paymentBase64;
+      
+      const customFormatRegex = /^([0-9a-z]+)([SGPDFX])([0-9a-z]+)K([0-9a-z]+)M([0-9a-z]+)(GA|GF|GS|GO|GT|GAP|GAN|GM|GSHS|GSH|GPD)?$/;
+      const serviceFormatRegex = /^S([a-n])K([0-9a-z]+)M([0-9a-z]+)(GA|GF|GS|GO|GT|GAP|GAN|GM|GSHS|GSH|GPD)?$/;
+      
+      const match = decodedString.match(customFormatRegex);
+      const matchService = decodedString.match(serviceFormatRegex);
+
+      if (!match && !matchService && !paymentBase64.includes('-')) {
+        try {
+          decodedString = atob(paymentBase64);
+        } catch (e) {
+          // fallback
+        }
+      }
+
+      let parsed: any;
+      if (matchService) {
+        const serviceCode = matchService[1].toLowerCase();
+        const serviceItem = SERVICES.find(s => s.code === serviceCode);
+        parsed = {
+          edition: serviceItem ? serviceItem.name : 'Unknown Service',
+          isService: true,
+          serviceName: serviceItem ? serviceItem.name : 'Unknown Service',
+          disc: parseInt(matchService[2], 36) / 100,
+          total: parseInt(matchService[3], 36) / 100,
+          gateway: matchService[4] === 'GA' ? 'Authorize.net' : matchService[4] === 'GO' ? 'Online Payment' : matchService[4] === 'GAN' ? 'Antom' : matchService[4] === 'GM' ? 'MOR' : matchService[4] === 'GSHS' ? 'Shopify Subscription' : matchService[4] === 'GSH' ? 'Shopify' : matchService[4] === 'GPD' ? 'PayDollar' : matchService[4] === 'GT' || matchService[4] === 'GS' ? 'Stripe' : 'Authorize.net',
+          time: Date.now()
+        };
+      } else if (match) {
+        const reverseMap: Record<string, string> = { S: 'silver', G: 'gold', P: 'platinum', D: 'diamond', F: 'fsp', W: 'whop' };
+        parsed = {
+          user: parseInt(match[1], 36),
+          edition: reverseMap[match[2].toUpperCase()] || 'silver',
+          year: parseInt(match[3], 36),
+          disc: parseInt(match[4], 36) / 100,
+          total: parseInt(match[5], 36) / 100,
+          gateway: match[6] === 'GA' ? 'Authorize.net' : match[6] === 'GO' ? 'Online Payment' : match[6] === 'GAN' ? 'Antom' : match[6] === 'GM' ? 'MOR' : match[6] === 'GSHS' ? 'Shopify Subscription' : match[6] === 'GSH' ? 'Shopify' : match[6] === 'GPD' ? 'PayDollar' : match[6] === 'GT' || match[6] === 'GS' ? 'Stripe' : 'Authorize.net',
+          time: Date.now()
+        };
+      } else if (decodedString.startsWith('{')) {
+        parsed = JSON.parse(decodedString)
+      } else {
+        const parts = decodedString.split('-')
+        if (parts.length >= 5) {
+          const reverseMap: Record<string, string> = { s: 'silver', g: 'gold', p: 'platinum', d: 'diamond', f: 'fsp', w: 'whop' };
+          parsed = {
+            user: parseInt(parts[0]),
+            edition: reverseMap[parts[1]] || parts[1],
+            year: parseInt(parts[2]),
+            disc: parseFloat(parts[3]),
+            total: parseFloat(parts[4]),
+            time: parts.length >= 6 ? parseInt(parts[5]) : Date.now()
+          }
+        } else {
+          throw new Error('Invalid format')
+        }
+      }
+      
       setPaymentObj({...parsed, total: parsed.total*100})
-      // ✅ Only push if needed — prevent redirect loop (link expiration timeout check removed)
-      if(!noLoginRedir) router.push('/login?payment=' + paymentBase64)
+      
+      if (!noLoginRedir) {
+        router.push('/login?token=' + paymentBase64)
+      }
 
     } catch (error) {
       if (enableToast) toast.error('Invalid payment link')
@@ -46,7 +122,7 @@ const useParamPaymentDetails = ({ noLinkRedirection, enableToast, noLoginRedir }
     }
   }, [paymentBase64, router, searchParams, noLoginRedir, noLinkRedirection, enableToast])
 
-  return { paymentObj:paymentObj as PaymentDetails, paymentBase64 }
+  return { paymentObj: paymentObj as PaymentDetails, paymentBase64 }
 }
 
 export default useParamPaymentDetails
