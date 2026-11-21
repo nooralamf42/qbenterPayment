@@ -9,7 +9,6 @@ import { useUserDetails } from '@/app/hooks/useUserDetails';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSteps } from '@/app/hooks/useSteps';
 import useParamPaymentDetails from '@/app/hooks/useParamPaymentDetails';
-import { useCreateGuestUser } from '@/app/hooks/useCreateGuestUser';
 import toast from 'react-hot-toast';
 import Loader from '@/components/loader';
 
@@ -43,20 +42,14 @@ export default function CheckoutForm() {
         }));
     };
 
-    const {mutateAsync, isPending, isSuccess} = useCreateGuestUser()
-
     if (step < 2) {
         return <Loader />;
     }
     const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        mutateAsync({firstName: formData.firstName, lastName: formData.lastName, email: formData.email}).then((res) => {
-            setUserDetails({...formData, guestUserId: res.id})
-            setStep(3)
-            toast.success('Saved Details')
-        }).catch(()=>{
-            toast.error('Internal Server Error! Try again')
-        })
+        setUserDetails({...formData})
+        setStep(3)
+        toast.success('Saved Details')
     };
 
     return (
@@ -115,11 +108,10 @@ export default function CheckoutForm() {
                             {
                                 step !==3 && 
                                 (<button
-                                    disabled={isPending}
                                     type="submit"
                                     className={`mt-8 text-white px-6 py-2 rounded-md font-medium transition-colors cursor-pointer bg-black hover:bg-gray-800`}
                                 >
-                                    {isPending ? 'Saving...' : 'Save'}
+                                    Save
                                 </button>)
                             }
                         </div>

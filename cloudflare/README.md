@@ -14,12 +14,6 @@ This project is configured to build and deploy to Cloudflare Workers via `@openn
   - `NEXT_PUBLIC_BASE_URL`
   - `NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD`
   - `NEXT_PUBLIC_ENCODED_USER_PASSWORD`
-  - `NEXT_PUBLIC_EPAY_PUBLIC_KEY`
-  - `NEXT_PUBLIC_EPAY_TER_NO`
-  - `NEXT_PUBLIC_RESEND_API_KEY`
-- **Runtime secrets** (Worker -> Settings -> Variables and secrets):
-  - `TRUSTAP_API_KEY` (Secret)
-  - `TRUSTAP_SELLER_ID` (Secret)
+  - *(Optional / when active)*: `NEXT_PUBLIC_EPAY_PUBLIC_KEY`, `NEXT_PUBLIC_EPAY_TER_NO`
 
 *Note: Windows cannot run the OpenNext build locally due to symlink permissions; builds run on Cloudflare Workers Builds (Linux) or WSL.*
-

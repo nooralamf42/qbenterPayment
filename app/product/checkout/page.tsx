@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 import CompanyInfo from '@/app/(payment)/checkout/components/companyInfo';
 import ContactInfo from '@/app/(payment)/checkout/components/contactInfo';
 import BusinessAddress from '@/app/(payment)/checkout/components/businessAddress';
-import { useCreateGuestUser } from '@/app/hooks/useCreateGuestUser';
 import { useUserDetails } from '@/app/hooks/useUserDetails';
 
 export default function QualityBusinessCheckout() {
@@ -25,7 +24,6 @@ export default function QualityBusinessCheckout() {
     const [showPassword, setShowPassword] = useState(false);
 
     const {setUserDetails, userDetails} = useUserDetails()
-    const {mutateAsync, isPending} = useCreateGuestUser()
     const [formData, setFormData] = useState({
         companyName: '',
         email: '',
@@ -69,13 +67,9 @@ export default function QualityBusinessCheckout() {
 
     const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        mutateAsync({firstName: formData.firstName, lastName: formData.lastName, email: formData.email}).then((res) => {
-            setUserDetails({...formData, guestUserId: res.id})
-            setSubStep(3)
-            toast.success('Saved Details')
-        }).catch(()=>{
-            toast.error('Internal Server Error! Try again')
-        })
+        setUserDetails({...formData})
+        setSubStep(3)
+        toast.success('Saved Details')
     };
 
     const handlePaymentClick = () => {
@@ -273,11 +267,10 @@ export default function QualityBusinessCheckout() {
                                     <BusinessAddress country={formData.country} address={formData.address} zipCode={formData.zipCode} city={formData.city} state={formData.state} onChange={handleInputChange} />
                                     {subStep !== 3 && (
                                         <button
-                                            disabled={isPending}
                                             type="submit"
                                             className="mt-8 bg-black hover:bg-gray-800 text-white px-8 py-3 rounded-md font-medium transition-colors cursor-pointer w-full md:w-auto"
                                         >
-                                            {isPending ? 'Saving...' : 'Save and Continue'}
+                                            Save and Continue
                                         </button>
                                     )}
                                 </div>
