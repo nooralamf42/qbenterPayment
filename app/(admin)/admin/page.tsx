@@ -9,8 +9,8 @@ import { Eye, EyeOff } from 'lucide-react';
 import { getAssetUrl } from '@/app/lib/getAssetUrl';
 
 const AdminLogin = () => {
-    // Base64 encoded admin password
-    const ENCODED_ADMIN_PASS = process.env.NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD;
+    // Base64 encoded admin password (with fallback to default if not injected during build)
+    const ENCODED_ADMIN_PASS = process.env.NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD || 'TXBjbjYyJQ==';
     
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
