@@ -1,7 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   // Must match the Worker name in the Cloudflare dashboard (Workers Builds checks it).
-  "name": "quickbooks-solution",
+  // Cloudflare named the Worker after the GitHub repo (qbenterPayment), not after this
+  // project's folder. Workers can't be renamed, and a mismatch here doesn't fail the
+  // deploy — `wrangler deploy` just creates/targets a SECOND Worker under the other name,
+  // without the routes, custom domain or variables set on this one.
+  "name": "qbenterpayment",
   "main": "worker.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],

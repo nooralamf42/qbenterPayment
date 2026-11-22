@@ -9,7 +9,10 @@ This project is configured to build and deploy to Cloudflare Workers via `@openn
 - **Build command**: `npm run cf:build`
 - **Deploy command**: `npx wrangler deploy`
 - **Non-production branch command**: `npx wrangler versions upload`
-- **Worker name**: Must match `name` in `wrangler.jsonc` (default: `quickbooks-solution`).
+- **Worker name**: Must match `name` in `wrangler.jsonc` — `qbenterpayment`, after the
+  GitHub repo, not this folder. A mismatch doesn't fail the build: `wrangler deploy`
+  silently creates a second Worker under the other name, with none of this one's routes,
+  custom domain or variables.
 - **Build variables** (Settings -> Build -> Variables):
   - `NEXT_PUBLIC_BASE_URL`
   - `NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD`
