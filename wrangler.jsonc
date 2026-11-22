@@ -11,6 +11,21 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   // `wrangler deploy` replaces plain-text vars with wrangler.jsonc vars; keep dashboard values
   "keep_vars": true,
+  // Non-sensitive Shopify config. Kept here rather than in the dashboard because dashboard
+  // variables only take effect once a new Worker version is created from them, which is easy
+  // to miss — values can sit in the settings form looking saved while the running Worker has
+  // never seen them. Anything in this block ships with every deploy instead.
+  // Credentials do NOT belong here: SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET,
+  // SHOPIFY_ACCESS_TOKEN, SHOPIFY_STOREFRONT_ACCESS_TOKEN and MONGODB_URI are set with
+  // `wrangler secret put <NAME> --name qbenterpayment`.
+  "vars": {
+    "SHOPIFY_SHOP_DOMAIN": "pd86wh-3f.myshopify.com",
+    "SHOPIFY_API_VERSION": "2025-07",
+    "SHOPIFY_ENTERPRISE_VARIANT_ID": "48589166739540",
+    // Store base currency is AUD; these two are what make customers pay in USD.
+    "SHOPIFY_PRESENTMENT_CURRENCY": "USD",
+    "SHOPIFY_BUYER_COUNTRY": "US"
+  },
   // Workers Logs: one line per request incl. CPU time
   "observability": {
     "logs": {

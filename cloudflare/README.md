@@ -32,12 +32,19 @@ plain **Text** for the rest, so the non-sensitive values stay readable in the da
 | `SHOPIFY_CLIENT_SECRET` | Secret | Dev Dashboard -> app -> Settings -> Credentials |
 | `SHOPIFY_ACCESS_TOKEN` | Secret | `shpat_…`, from running `/api/shopify/install` |
 | `SHOPIFY_STOREFRONT_ACCESS_TOKEN` | Secret | Subscription cart flow only; may be left unset |
-| `SHOPIFY_CLIENT_ID` | Text | |
-| `SHOPIFY_SHOP_DOMAIN` | Text | e.g. `pd86wh-3f.myshopify.com` |
-| `SHOPIFY_API_VERSION` | Text | e.g. `2025-07` |
-| `SHOPIFY_ENTERPRISE_VARIANT_ID` | Text | Variant the Enterprise line item attaches to |
-| `SHOPIFY_PRESENTMENT_CURRENCY` | Text | `USD`. Needs a matching active Shopify market |
-| `SHOPIFY_BUYER_COUNTRY` | Text | `US`. Picks the market the subscription cart prices in |
+| `SHOPIFY_CLIENT_ID` | Secret | |
+
+The non-sensitive rest — `SHOPIFY_SHOP_DOMAIN`, `SHOPIFY_API_VERSION`,
+`SHOPIFY_ENTERPRISE_VARIANT_ID`, `SHOPIFY_PRESENTMENT_CURRENCY`, `SHOPIFY_BUYER_COUNTRY` —
+live in the `vars` block of `wrangler.jsonc`, not the dashboard, so every deploy carries
+them. Don't also set those names in the dashboard; two sources for one name is how they
+end up disagreeing.
+
+**Dashboard variables only apply once a new Worker version is created from them.** Entering
+values in Settings -> Variables and secrets and leaving the page is not enough: the form can
+show the values while the running Worker has never had them. Check with
+`npx wrangler secret list --name qbenterpayment` (secrets) and `npx wrangler tail
+qbenterpayment` (a `requireEnv` failure names the missing variable).
 
 `SHOPIFY_PRESENTMENT_CURRENCY` is not optional in practice: the store's base currency is
 AUD, so without it draft orders are raised in AUD and a 49.87 order bills A$49.87 rather
