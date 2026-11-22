@@ -128,19 +128,29 @@ export interface CreateDraftOrderParams {
 // Store-specific: set SHOPIFY_ENTERPRISE_VARIANT_ID to the numeric variant id (or full gid)
 // of this store's QuickBooks Enterprise variant. Left unset, draft orders still work — the
 // line item just falls back to a plain custom item with the placeholder image.
-const QUICKBOOKS_ENTERPRISE_VARIANT_ID = toVariantGid(process.env.SHOPIFY_ENTERPRISE_VARIANT_ID);
+// NOTE: every process.env read below happens inside a function, never at module scope.
+// On OpenNext/Cloudflare Workers process.env isn't reliably populated until request-scoped
+// context runs, so a top-level `const x = process.env.FOO` can capture undefined
+// permanently on a cold isolate.
+function enterpriseVariantId(): string | undefined {
+  return toVariantGid(process.env.SHOPIFY_ENTERPRISE_VARIANT_ID);
+}
 
 // The currency the customer is billed in. This store's BASE currency is AUD, so without an
 // explicit presentmentCurrencyCode every draft order would be raised in AUD and a 49.87
 // amount would be charged as A$49.87, not US$49.87. USD is available as a presentment
 // currency because the store has an active United States market; if that market is ever
 // removed, Shopify rejects the draft order rather than silently billing the wrong currency.
-const PRESENTMENT_CURRENCY = (process.env.SHOPIFY_PRESENTMENT_CURRENCY || 'USD').toUpperCase();
+function presentmentCurrency(): string {
+  return (process.env.SHOPIFY_PRESENTMENT_CURRENCY || 'USD').toUpperCase();
+}
 
 // The Storefront Cart API has no presentmentCurrencyCode — it derives the currency from the
 // buyer's market, which is chosen by country. This is the fallback when the customer gave no
-// address, and must stay in step with PRESENTMENT_CURRENCY's market.
-const SUBSCRIPTION_BUYER_COUNTRY = (process.env.SHOPIFY_BUYER_COUNTRY || 'US').toUpperCase();
+// address, and must stay in step with presentmentCurrency()'s market.
+function subscriptionBuyerCountry(): string {
+  return (process.env.SHOPIFY_BUYER_COUNTRY || 'US').toUpperCase();
+}
 
 /** Creates a draft order with a single custom-priced line item and returns its invoice URL. */
 export async function createDraftOrderInvoice(params: CreateDraftOrderParams) {
@@ -162,14 +172,16 @@ export async function createDraftOrderInvoice(params: CreateDraftOrderParams) {
   `;
 
   // Falls back to a plain custom line item when this store has no mapped variant configured.
+  const enterpriseVariant = enterpriseVariantId();
+  const currency = presentmentCurrency();
   const isQuickBooksEdition =
-    !!QUICKBOOKS_ENTERPRISE_VARIANT_ID &&
+    !!enterpriseVariant &&
     params.title?.toLowerCase().startsWith('quickbooks enterprise');
 
   const variables = {
     input: {
       email: params.customerEmail,
-      presentmentCurrencyCode: PRESENTMENT_CURRENCY,
+      presentmentCurrencyCode: currency,
       note: params.note,
       tags: ['qb-enterprise', `localOrderId:${params.localOrderId}`],
       // Surfaced as checkout.attributes in the Order Status page's "Additional scripts",
@@ -182,8 +194,8 @@ export async function createDraftOrderInvoice(params: CreateDraftOrderParams) {
       lineItems: [
         isQuickBooksEdition
           ? {
-              variantId: QUICKBOOKS_ENTERPRISE_VARIANT_ID,
-              priceOverride: { amount: params.amountUSD.toFixed(2), currencyCode: PRESENTMENT_CURRENCY },
+              variantId: enterpriseVariant,
+              priceOverride: { amount: params.amountUSD.toFixed(2), currencyCode: currency },
               quantity: 1,
             }
           : {
@@ -290,13 +302,13 @@ export async function registerOrdersPaidWebhook(callbackUrl: string) {
 // id, e.g. {"49.87":"54224799433068","98.78":"54224800579948"}. Both accept bare numeric
 // ids or full gids. Until they're set, the subscription flow refuses rather than charging
 // against the wrong product.
-export const PAYROLL_SUBSCRIPTION_SELLING_PLAN_ID = (() => {
+export function payrollSellingPlanId(): string | undefined {
   const raw = process.env.SHOPIFY_PAYROLL_SELLING_PLAN_ID?.trim();
   if (!raw) return undefined;
   return raw.startsWith('gid://') ? raw : `gid://shopify/SellingPlan/${raw}`;
-})();
+}
 
-export const PAYROLL_SUBSCRIPTION_VARIANTS: Record<string, string> = (() => {
+export function payrollSubscriptionVariants(): Record<string, string> {
   const raw = process.env.SHOPIFY_PAYROLL_VARIANTS?.trim();
   if (!raw) return {};
   try {
@@ -310,7 +322,7 @@ export const PAYROLL_SUBSCRIPTION_VARIANTS: Record<string, string> = (() => {
     console.error('[Shopify] SHOPIFY_PAYROLL_VARIANTS is not valid JSON — ignoring it.');
     return {};
   }
-})();
+}
 
 export interface SubscriptionCheckoutParams {
   tier: string;
@@ -353,7 +365,7 @@ export async function resolveSellingPlanIdForVariant(variantId: string): Promise
     body: JSON.stringify({ query, variables: { id: variantId } }),
   });
 
-  const expectedPlanId = PAYROLL_SUBSCRIPTION_SELLING_PLAN_ID;
+  const expectedPlanId = payrollSellingPlanId();
   if (!expectedPlanId) {
     console.error('[Shopify] SHOPIFY_PAYROLL_SELLING_PLAN_ID is not set — refusing to pick a plan.');
     return null;
@@ -371,7 +383,7 @@ export async function resolveSellingPlanIdForVariant(variantId: string): Promise
 
 /** Creates a fresh Storefront API cart for a QuickBooks Payroll subscription tier and returns its checkout URL. */
 export async function createSubscriptionCheckoutUrl(params: SubscriptionCheckoutParams): Promise<string | null> {
-  const variantId = PAYROLL_SUBSCRIPTION_VARIANTS[params.tier];
+  const variantId = payrollSubscriptionVariants()[params.tier];
   if (!variantId) return null;
 
   const sellingPlanId = await resolveSellingPlanIdForVariant(variantId);
@@ -413,7 +425,7 @@ export async function createSubscriptionCheckoutUrl(params: SubscriptionCheckout
           // checkout would be billed in AUD even though the tier figures are US dollars.
           buyerIdentity: {
             ...(params.email ? { email: params.email } : {}),
-            countryCode: params.address?.countryCode || SUBSCRIPTION_BUYER_COUNTRY,
+            countryCode: params.address?.countryCode || subscriptionBuyerCountry(),
           },
           // Prefills checkout's "Delivery" step — unlike Draft Orders, the Cart API has no
           // separate billing-address concept; this is the only address input it accepts.

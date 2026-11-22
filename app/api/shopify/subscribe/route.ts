@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSubscriptionCheckoutUrl, PAYROLL_SUBSCRIPTION_VARIANTS } from '@/app/lib/shopify';
+import { createSubscriptionCheckoutUrl, payrollSubscriptionVariants } from '@/app/lib/shopify';
 
 export async function GET(req: NextRequest) {
   const tier = req.nextUrl.searchParams.get('tier') ?? '';
 
-  if (!(tier in PAYROLL_SUBSCRIPTION_VARIANTS)) {
+  if (!(tier in payrollSubscriptionVariants())) {
     return NextResponse.json({ error: 'Invalid tier' }, { status: 400 });
   }
 

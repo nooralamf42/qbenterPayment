@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/app/lib/mongodb';
-import { createSubscriptionCheckoutUrl, PAYROLL_SUBSCRIPTION_VARIANTS } from '@/app/lib/shopify';
+import { createSubscriptionCheckoutUrl, payrollSubscriptionVariants } from '@/app/lib/shopify';
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
       clientSignatureBase64, agreedToTerms
     } = body;
 
-    if (!(tier in PAYROLL_SUBSCRIPTION_VARIANTS)) {
+    if (!(tier in payrollSubscriptionVariants())) {
       return NextResponse.json({ error: 'Invalid subscription tier' }, { status: 400 });
     }
 
