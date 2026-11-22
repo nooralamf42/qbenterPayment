@@ -1,5 +1,9 @@
-@import "tailwindcss";
+/* The font @import must come BEFORE "tailwindcss": Tailwind v4 expands its import inline,
+   so a URL @import listed after it lands ~2000 lines deep in the generated stylesheet, and
+   Turbopack rejects it ("@import rules must precede all rules"). That error breaks the whole
+   dev build, API routes included. */
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap');
+@import "tailwindcss";
 
 .bg-secondary{
     background-color: #F4F5F8;

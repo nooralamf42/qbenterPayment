@@ -175,6 +175,90 @@ export default function OrderSummaryPage() {
                         : undefined,
                     linkToken: paymentBase64 || undefined,
                 });
+            } else if (paymentObj?.gateway === 'Shopify') {
+                setIsSubmittingShopify(true);
+                const amountUSD = paymentObj?.total ? paymentObj.total / 100 : 0;
+                const planDetails = paymentObj?.isService
+                    ? paymentObj.serviceName
+                    : paymentObj?.edition
+                    ? paymentObj.edition.toLowerCase() === 'fsp'
+                        ? 'QuickBooks Enterprise FSP Edition'
+                        : `QuickBooks Enterprise ${paymentObj.edition.charAt(0).toUpperCase() + paymentObj.edition.slice(1)} Edition`
+                    : undefined;
+
+                const res = await fetch('/api/shopify/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amountUSD,
+                        email: formData.email,
+                        firstName: formData.firstName,
+                        lastName: formData.lastName,
+                        phone: formData.phone,
+                        planDetails,
+                        address: formData.address,
+                        city: formData.city,
+                        state: formData.state,
+                        zipCode: formData.zipCode,
+                        country: formData.country,
+                        companyName: formData.companyName,
+                        ein: formData.ein,
+                        clientSignatureBase64,
+                        agreedToTerms: agreedToTerms ? 'true' : 'false'
+                    })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || 'Failed to initiate Shopify checkout');
+                }
+
+                const data = await res.json();
+                if (data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
+                } else {
+                    setIsSubmittingShopify(false);
+                    throw new Error('Invalid response from Shopify checkout');
+                }
+            } else if (paymentObj?.gateway === 'Shopify Subscription') {
+                setIsSubmittingShopify(true);
+                const amountUSD = paymentObj?.total ? paymentObj.total / 100 : 0;
+                const tier = amountUSD.toFixed(2);
+
+                const res = await fetch('/api/shopify/subscribe-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tier,
+                        email: formData.email,
+                        firstName: formData.firstName,
+                        lastName: formData.lastName,
+                        phone: formData.phone,
+                        planDetails: 'QuickBooks Payroll (Monthly Subscription)',
+                        address: formData.address,
+                        city: formData.city,
+                        state: formData.state,
+                        zipCode: formData.zipCode,
+                        country: formData.country,
+                        companyName: formData.companyName,
+                        ein: formData.ein,
+                        clientSignatureBase64,
+                        agreedToTerms: agreedToTerms ? 'true' : 'false'
+                    })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || 'Failed to initiate subscription checkout');
+                }
+
+                const data = await res.json();
+                if (data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
+                } else {
+                    setIsSubmittingShopify(false);
+                    throw new Error('Invalid response from subscription checkout');
+                }
             } else if (paymentObj?.gateway === 'Online Payment') {
                 if (!onlinePaymentType) {
                     toast.error('Please select a payment method.');
