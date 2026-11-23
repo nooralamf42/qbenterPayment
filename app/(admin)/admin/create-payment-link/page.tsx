@@ -120,7 +120,7 @@ export default function QuickBooksPaymentLinkCreator() {
   const [selectedYears, setSelectedYears] = useState(1)
   const [discountAmount, setDiscountAmount] = useState('')
   const [paymentLink, setPaymentLink] = useState('')
-  const [selectedGateway, setSelectedGateway] = useState<'authorize' | 'online' | 'stripe' | 'antom' | 'shopify' | 'mor' | 'paydollar'>('authorize')
+  const [selectedGateway, setSelectedGateway] = useState<'authorize' | 'online' | 'stripe' | 'antom' | 'shopify' | 'mor' | 'paydollar'>('shopify')
 
   const [activeTab, setActiveTab] = useQueryState(
     'tab',
@@ -853,6 +853,11 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
               <div className="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
                 <label className="block mb-2 font-medium text-xs text-zinc-500 uppercase tracking-wider">Payment Gateway</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-white rounded-md border border-zinc-200 p-1">
+                  {/* Only Shopify is live. The other gateways are kept here, commented out,
+                      rather than deleted: their checkout branches in /order-summary and their
+                      API routes are untouched, so any link already issued under them still
+                      works. Uncomment a button to put that gateway back in the picker. */}
+                  {/*
                   <button
                     type="button"
                     onClick={() => {
@@ -903,6 +908,7 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
                   >
                     Antom
                   </button>
+                  */}
                   <button
                     type="button"
                     onClick={() => {
@@ -913,6 +919,7 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
                   >
                     Shopify
                   </button>
+                  {/*
                   <button
                     type="button"
                     onClick={() => {
@@ -923,6 +930,7 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
                   >
                     PayDollar
                   </button>
+                  */}
                 </div>
               </div>
 
