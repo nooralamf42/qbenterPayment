@@ -65,7 +65,8 @@ export default function Stepper() {
       else router.push('/broken-link')
     }
     if(step===2){
-      if(paymentID) router.push(`/checkout?${paymentKey}=${paymentID}`)
+      // /order-summary, not /checkout: see the comment in app/(payment)/login/page.tsx.
+      if(paymentID) router.push(`/order-summary?${paymentKey}=${paymentID}`)
       else router.push('/broken-link')
     }
   },[pathName, step, searchParams, router])

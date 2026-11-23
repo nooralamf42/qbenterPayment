@@ -151,7 +151,12 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
             if (isPlan) {
                 router.push('/checkout?plan=' + planParam)
             } else {
-                router.push(`/checkout?${paymentKey}=${paymentID}`)
+                // Payment links go to /order-summary, which dispatches on the gateway the
+                // admin picked (Shopify, Authorize.net, Online Payment, …). /checkout is the
+                // older page whose "Pay Now" is hardwired to ePay, so a Shopify link landing
+                // there failed with "Payment gateway not configured". ?plan= links stay on
+                // /checkout — only its order summary knows how to price a plan.
+                router.push(`/order-summary?${paymentKey}=${paymentID}`)
             }
         }
     };
