@@ -78,10 +78,16 @@ interface AdminGraphQLResult<T> {
   errors?: any[];
 }
 
-export async function adminGraphQL<T = any>(query: string, variables?: Record<string, any>): Promise<AdminGraphQLResult<T>> {
+/** `tokenOverride` is for the OAuth callback, which has just been issued a token that is not
+ *  yet in the environment — everything else should leave it unset and use SHOPIFY_ACCESS_TOKEN. */
+export async function adminGraphQL<T = any>(
+  query: string,
+  variables?: Record<string, any>,
+  tokenOverride?: string
+): Promise<AdminGraphQLResult<T>> {
   const shop = requireEnv('SHOPIFY_SHOP_DOMAIN');
   const apiVersion = process.env.SHOPIFY_API_VERSION || '2026-01';
-  const accessToken = requireEnv('SHOPIFY_ACCESS_TOKEN');
+  const accessToken = tokenOverride || requireEnv('SHOPIFY_ACCESS_TOKEN');
 
   const res = await fetch(`https://${shop}/admin/api/${apiVersion}/graphql.json`, {
     method: 'POST',
@@ -276,7 +282,16 @@ export function formatCardLabel(company?: string, maskedNumber?: string): string
   return `${company || 'Card'} ending in ${last4}`;
 }
 
-export async function registerOrdersPaidWebhook(callbackUrl: string) {
+/** Subscribes the shop to ORDERS_PAID so a completed payment reaches /api/shopify/webhook
+ *  without depending on the customer's browser reaching the Order Status page.
+ *
+ *  Idempotent: Shopify rejects a duplicate topic+callbackUrl with "address for this topic
+ *  has already been taken", so an existing subscription is reported as `alreadyRegistered`
+ *  rather than as an error. Safe to call on every install. */
+export async function registerOrdersPaidWebhook(
+  callbackUrl: string,
+  tokenOverride?: string
+): Promise<{ ok: boolean; alreadyRegistered?: boolean; message?: string }> {
   const mutation = `
     mutation webhookSubscriptionCreate($topic: WebhookSubscriptionTopic!, $webhookSubscription: WebhookSubscriptionInput!) {
       webhookSubscriptionCreate(topic: $topic, webhookSubscription: $webhookSubscription) {
@@ -285,10 +300,31 @@ export async function registerOrdersPaidWebhook(callbackUrl: string) {
       }
     }
   `;
-  return adminGraphQL(mutation, {
-    topic: 'ORDERS_PAID',
-    webhookSubscription: { callbackUrl, format: 'JSON' },
-  });
+  const result = await adminGraphQL<{
+    webhookSubscriptionCreate: {
+      webhookSubscription: { id: string; callbackUrl: string } | null;
+      userErrors: { field: string[] | null; message: string }[];
+    };
+  }>(
+    mutation,
+    { topic: 'ORDERS_PAID', webhookSubscription: { callbackUrl, format: 'JSON' } },
+    tokenOverride
+  );
+
+  if (!result.ok) {
+    return { ok: false, message: result.errors?.map((e) => e.message).join('; ') };
+  }
+
+  const userErrors = result.data?.webhookSubscriptionCreate?.userErrors ?? [];
+  if (userErrors.length) {
+    const message = userErrors.map((e) => e.message).join('; ');
+    if (/already been taken/i.test(message)) {
+      return { ok: true, alreadyRegistered: true, message };
+    }
+    return { ok: false, message };
+  }
+
+  return { ok: true };
 }
 
 // THIS app's own selling plan ("monthly-billing" / "Billed monthly"). Verified live against

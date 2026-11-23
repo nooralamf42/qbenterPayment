@@ -2,6 +2,7 @@
 
 import { CheckCircle, MailIcon } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function PaymentSuccessPage() {
   const params = useSearchParams();
@@ -12,6 +13,35 @@ export default function PaymentSuccessPage() {
   const billAmt = params.get('bill_amt')
   const billCurrency = params.get('bill_currency') || 'USD'
   const reference = params.get('reference')
+
+  // Shopify fallback. The orders/paid webhook is the primary confirmation path and needs no
+  // browser, but it can be late or (on localhost) unreachable, so confirm directly against
+  // the Admin API as well. The orderId comes from the URL when Shopify's Order Status page
+  // sends the customer here via an "Additional scripts" snippet, and otherwise from what
+  // /order-summary stashed before redirecting. sync-order is idempotent and no-ops on a
+  // record already marked Completed.
+  const gateway = params.get('gateway')
+  const orderIdParam = params.get('orderId')
+  useEffect(() => {
+    let localOrderId = orderIdParam
+    if (!localOrderId) {
+      try {
+        localOrderId = localStorage.getItem('shopifyLocalOrderId')
+      } catch { /* storage unavailable */ }
+    }
+    if (!localOrderId) return
+    if (gateway && gateway !== 'shopify') return
+
+    fetch('/api/shopify/sync-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ localOrderId }),
+    })
+      .then(() => {
+        try { localStorage.removeItem('shopifyLocalOrderId') } catch { /* ignore */ }
+      })
+      .catch((err) => console.error('Shopify sync fallback failed:', err))
+  }, [gateway, orderIdParam])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">

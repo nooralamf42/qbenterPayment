@@ -215,6 +215,15 @@ export default function OrderSummaryPage() {
 
                 const data = await res.json();
                 if (data.redirectUrl) {
+                    // Remember which local record this checkout belongs to, so /payment-success
+                    // can confirm it against the Admin API even when Shopify's Order Status page
+                    // sends the customer back without an orderId in the URL. Belt-and-braces
+                    // behind the orders/paid webhook, which does not need the browser at all.
+                    try {
+                        if (data.localOrderId) {
+                            localStorage.setItem('shopifyLocalOrderId', data.localOrderId);
+                        }
+                    } catch { /* private mode / storage disabled — the webhook still covers it */ }
                     window.location.href = data.redirectUrl;
                 } else {
                     setIsSubmittingShopify(false);
