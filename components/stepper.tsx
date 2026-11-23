@@ -55,12 +55,17 @@ export default function Stepper() {
       return
     }
 
-    const paymentID = searchParams.get('payment')
+    // Links come with either key (`token` from useParamPaymentDetails and /invoice/[id],
+    // `payment` from here). Reading only `payment` rewrote a `?token=` URL to
+    // `?payment=null`, losing the link, and then sent the customer to /broken-link.
+    const paymentKey = searchParams.get('token') ? 'token' : 'payment'
+    const paymentID = searchParams.get('token') || searchParams.get('payment')
     if(step===0){
-      router.push('/login?payment=' + paymentID)
+      if(paymentID) router.push(`/login?${paymentKey}=${paymentID}`)
+      else router.push('/broken-link')
     }
     if(step===2){
-      if(paymentID) router.push('/checkout?payment=' + paymentID)
+      if(paymentID) router.push(`/checkout?${paymentKey}=${paymentID}`)
       else router.push('/broken-link')
     }
   },[pathName, step, searchParams, router])

@@ -124,7 +124,11 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
 // Password Page Component
 const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) => {
     const searchParams = useSearchParams()
-    const paymentID = searchParams.get('payment')
+    // Payment links arrive under either key: useParamPaymentDetails and /invoice/[id] send
+    // `token`, components/stepper.tsx sends `payment`. Reading only `payment` meant every
+    // `?token=` link failed the guard below and showed a bogus "Internal Server Error".
+    const paymentKey = searchParams.get('token') ? 'token' : 'payment'
+    const paymentID = searchParams.get('token') || searchParams.get('payment')
     const planParam = searchParams.get('plan')
     const isPlan = planParam && ['foundation', 'growth', 'enterprise'].includes(planParam.toLowerCase())
 
@@ -138,7 +142,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
     const handleContinue = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         if (!paymentID && !isPlan) {
-            toast.error('Internal Server Error')
+            toast.error('This payment link is invalid or has expired.')
             return
         }
         if (password) {
@@ -147,7 +151,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
             if (isPlan) {
                 router.push('/checkout?plan=' + planParam)
             } else {
-                router.push('/checkout?payment=' + paymentID)
+                router.push(`/checkout?${paymentKey}=${paymentID}`)
             }
         }
     };
@@ -234,7 +238,8 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
 // Main App Component
 export default function IntuitLogin() {
     const searchParams = useSearchParams()
-    const paymentID = searchParams.get('payment')
+    // Either key — see the note in PasswordPage.
+    const paymentID = searchParams.get('token') || searchParams.get('payment')
     const planParam = searchParams.get('plan')
     const isPlan = planParam && ['foundation', 'growth', 'enterprise'].includes(planParam.toLowerCase())
 
