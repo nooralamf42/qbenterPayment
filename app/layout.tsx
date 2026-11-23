@@ -66,11 +66,16 @@ export default function RootLayout({
         <Toaster />
         <Providers>
           <Suspense fallback={<Loader/>}>
-          <main className="pb-24">
+          <main className="pb-44 md:pb-24">
           {children}
           </main>
-          <Footer/>
           </Suspense>
+          {/* Outside the Suspense boundary on purpose. Pages here call useSearchParams(),
+              which makes the server skip the whole suspended subtree and render the fallback
+              instead — so a Footer inside it is absent from the SSR HTML but present after
+              hydration, which React reports as a hydration mismatch. It only needs
+              usePathname(), so it renders fine on the server out here. */}
+          <Footer/>
         </Providers>
       </body>
     </html>
