@@ -76,19 +76,19 @@ const DELIVERY_STATUS_STYLE: Record<string, string> = {
 
 const FAILURE_DELIVERY_STATUSES = new Set(['bounced', 'complained', 'rejected', 'failed'])
 
-/** Postal appends "Recipient removed from suppression list" to nearly every successful send's
- *  detail text unconditionally (confirmed against its own worker logs — it fires even seconds
- *  apart with no bounce in between), not just when a row was genuinely removed. Stripped here
- *  since it reads as an alarming event but is really just Postal's own internal bookkeeping. */
+/** Strips a provider's suppression-list bookkeeping out of the detail text — it reads as an
+ *  alarming event to an admin but usually just records the provider's own list maintenance.
+ *  Carried over from the sister project, where Postal appended it to nearly every successful
+ *  send; harmless for Resend, which does not, and left in so the helper stays provider-agnostic. */
 function cleanDeliveryDetail(detail?: string): string {
   if (!detail) return ''
   return detail.replace(/\.?\s*Recipient (removed from|added to) suppression list[^.]*\.?/gi, '').trim()
 }
 
-/** Turns a provider's technical failure text (itWALK error codes, Postal SMTP messages) into
+/** Turns a provider's technical failure text (SMTP messages, numeric error codes) into
  *  a plain-English reason an admin can act on — "bounced" alone doesn't say whether the
  *  address is wrong, the domain is a typo, or the recipient's server is just refusing us.
- *  Matched on the raw detail, before cleanDeliveryDetail strips Postal's suppression note. */
+ *  Matched on the raw detail, before cleanDeliveryDetail strips any suppression note. */
 function explainDeliveryFailure(status?: string, rawDetail?: string): string {
   const d = rawDetail || ''
   if (/is on the suppression list/i.test(d)) {
@@ -115,15 +115,10 @@ function explainDeliveryFailure(status?: string, rawDetail?: string): string {
   return ''
 }
 
+/** Resend is the only provider that sends here. Kept as a map rather than a constant so a
+ *  second provider's rows stay distinguishable in the table if one is ever added. */
 const PROVIDER_STYLE: Record<string, string> = {
-  postal:     'bg-purple-50 text-purple-700 border-purple-200',
-  msg91:      'bg-indigo-50 text-indigo-700 border-indigo-200',
-  itwalk:     'bg-cyan-50 text-cyan-700 border-cyan-200', // historical rows only — provider removed 2026-10-15
-  postmark:   'bg-orange-50 text-orange-700 border-orange-200',
-  zeptomail:  'bg-teal-50 text-teal-700 border-teal-200',
-  maileroo:   'bg-pink-50 text-pink-700 border-pink-200',
-  mailersend: 'bg-lime-50 text-lime-700 border-lime-200',
-  mailpace:   'bg-sky-50 text-sky-700 border-sky-200',
+  resend:     'bg-violet-50 text-violet-700 border-violet-200',
 }
 
 const DELIVERY_STATUS_HINT: Record<string, string> = {
@@ -2650,7 +2645,7 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
               </div>
             </div>
             <p className="px-6 md:px-8 -mt-2 pb-2 text-[10px] text-zinc-400">
-              MailPace and MailerSend rows update automatically once their webhook is configured — "Check delivery" only re-checks Resend-tracked rows.
+              Rows stay at &ldquo;accepted&rdquo; until the Resend webhook is configured — that status means Resend took the message, not that it arrived.
             </p>
 
             {isLoadingEmailLogs ? (
