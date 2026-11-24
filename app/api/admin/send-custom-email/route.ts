@@ -1,0 +1,279 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { sendEmail } from '@/app/lib/emailSender';
+import { renderPaymentReceiptEmailHtml, renderPaymentFailedEmailHtml, renderRefundEmailHtml, renderFeedbackEmailHtml, renderQueryEmailHtml, getReminderEmailBranding } from '@/app/lib/emailTemplates';
+import { logEmailSent } from '@/app/lib/emailLog';
+
+// NOTE: app/lib/surveyEmailTemplate.ts (an earlier draft that copied Intuit's own "How
+// did we do?" survey email verbatim — including their real spoof@intuit.com report
+// address, their legal-notice links, and their copyright footer) is intentionally not
+// imported here. Sending that from this domain would impersonate Intuit's own support
+// org, not just use QuickBooks branding like the rest of this app does. Use
+// renderFeedbackEmailHtml below instead — same idea (NPS request, survey link), but
+// honestly from us.
+
+export async function POST(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get('Authorization');
+    const expectedPass = process.env.NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD;
+
+    if (!authHeader || authHeader !== `Bearer ${expectedPass}`) {
+      return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { type, toEmail, customerName, companyName, orderId, planDetails, paymentMethodLabel, licenseNumber, productNumber, numUsers, contractYears } = body;
+
+    if (!toEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) {
+      return NextResponse.json({ error: 'A valid recipient email is required' }, { status: 400 });
+    }
+    if (type !== 'success' && type !== 'failed' && type !== 'refund' && type !== 'survey' && type !== 'query') {
+      return NextResponse.json({ error: 'type must be "success", "failed", "refund", "survey", or "query"' }, { status: 400 });
+    }
+
+    const name = (customerName || '').trim() || 'there';
+    const fallbackOrderId = orderId || `MANUAL-${Date.now().toString(36).toUpperCase()}`;
+
+    if (type === 'success') {
+      const { amountUSD, paidAt, dueDate } = body;
+      if (amountUSD === undefined || amountUSD === null || isNaN(Number(amountUSD))) {
+        return NextResponse.json({ error: 'amountUSD is required' }, { status: 400 });
+      }
+
+      //   from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
+      //   // notifications@ has no mailbox and no receiving MX — without this, a customer
+      //   // reply either bounces or silently vanishes. billing@ is the one that's monitored.
+      //   replyTo: 'billing@quickbooks-solutions.com',
+      //   to: toEmail,
+      //   subject: 'We received your QuickBooks Enterprise payment!',
+      //   html: renderPaymentReceiptEmailHtml({ ... }),
+      const receiptData = {
+        customerName: name,
+        toEmail,
+        companyName,
+        orderId: fallbackOrderId,
+        paidAt: paidAt ? new Date(paidAt) : new Date(),
+        amountUSD: Number(amountUSD),
+        paymentMethodLabel: paymentMethodLabel || 'Card on file',
+        planDetails,
+        licenseNumber: licenseNumber || undefined,
+        productNumber: productNumber || undefined,
+        numUsers: numUsers !== undefined && numUsers !== null && numUsers !== '' ? Number(numUsers) : undefined,
+        contractYears: contractYears !== undefined && contractYears !== null && contractYears !== '' ? Number(contractYears) : undefined,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
+      };
+      const { data, error, provider, html } = await sendEmail({
+        from: 'Intuit QuickBooks <notifications@quickbooks-solutions.com>',
+        replyTo: 'billing@quickbooks-solutions.com',
+        to: toEmail,
+        subject: 'We received your QuickBooks Enterprise payment!',
+        html: renderPaymentReceiptEmailHtml(receiptData),
+      });
+
+      // Pre-existing gap, not new to this Postmark swap: this route never checked the
+      // provider's error before, so a rejected send still returned { success: true }.
+      // Surfacing it now since Postmark's sandbox mode (pending approval) makes rejections
+      // routine rather than rare.
+      if (error) {
+        return NextResponse.json({ error: error.message || 'Email provider rejected the send' }, { status: 502 });
+      }
+
+      await logEmailSent({
+        type: 'receipt',
+        toEmail,
+        customerName: name,
+        orderId: fallbackOrderId,
+        planDetails,
+        amountUSD: Number(amountUSD),
+        subject: 'We received your QuickBooks Enterprise payment!',
+        trigger: 'admin-manual',
+        providerMessageId: data?.id,
+        provider,
+        html,
+      });
+      // No internal payment-notification alert here on purpose — that's reserved for real
+      // payment events (the gateway webhooks). A manual/admin-triggered receipt send isn't
+      // a new payment, so it shouldn't re-notify the business as if one just happened.
+    } else if (type === 'refund') {
+      const { refundAmountUSD, refundedAt, reason } = body;
+      if (refundAmountUSD === undefined || refundAmountUSD === null || isNaN(Number(refundAmountUSD))) {
+        return NextResponse.json({ error: 'refundAmountUSD is required' }, { status: 400 });
+      }
+
+      const refundData = {
+        customerName: name,
+        toEmail,
+        companyName,
+        orderId: fallbackOrderId,
+        refundedAt: refundedAt ? new Date(refundedAt) : new Date(),
+        refundAmountUSD: Number(refundAmountUSD),
+        paymentMethodLabel: paymentMethodLabel || 'Card on file',
+        planDetails,
+        reason: reason || undefined,
+      };
+      const { data, error, provider, html } = await sendEmail({
+        from: 'Intuit QuickBooks <notifications@quickbooks-solutions.com>',
+        replyTo: 'billing@quickbooks-solutions.com',
+        to: toEmail,
+        subject: 'Your QuickBooks Enterprise refund has been processed',
+        html: renderRefundEmailHtml(refundData),
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message || 'Email provider rejected the send' }, { status: 502 });
+      }
+
+      await logEmailSent({
+        type: 'refund',
+        toEmail,
+        customerName: name,
+        orderId: fallbackOrderId,
+        planDetails,
+        amountUSD: Number(refundAmountUSD),
+        subject: 'Your QuickBooks Enterprise refund has been processed',
+        trigger: 'admin-manual',
+        providerMessageId: data?.id,
+        provider,
+        html,
+      });
+    } else if (type === 'failed') {
+      const { amountDueUSD, cancellationDate, updateUrl, dueDate } = body;
+      if (amountDueUSD === undefined || amountDueUSD === null || isNaN(Number(amountDueUSD))) {
+        return NextResponse.json({ error: 'amountDueUSD is required' }, { status: 400 });
+      }
+      if (!cancellationDate || !dueDate) {
+        return NextResponse.json({ error: 'cancellationDate and dueDate are required' }, { status: 400 });
+      }
+
+      //   from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
+      //   // notifications@ has no mailbox and no receiving MX — without this, a customer
+      //   // reply either bounces or silently vanishes. billing@ is the one that's monitored.
+      //   replyTo: 'billing@quickbooks-solutions.com',
+      //   to: toEmail,
+      //   subject: 'Action needed: update your QuickBooks Enterprise payment method',
+      //   html: renderPaymentFailedEmailHtml({ ... }),
+      // Payroll reminders get a different subject/sender (Intuit-run subscription framing)
+      // than every other reminder — see getReminderEmailBranding(). Receipts are unaffected.
+      const branding = getReminderEmailBranding(planDetails);
+      const reminderData = {
+        customerName: name,
+        toEmail,
+        companyName,
+        orderId: fallbackOrderId,
+        amountDueUSD: Number(amountDueUSD),
+        paymentMethodLabel: paymentMethodLabel || 'the payment method on file',
+        cancellationDate: new Date(cancellationDate),
+        dueDate: new Date(dueDate),
+        planDetails,
+        numUsers: numUsers !== undefined && numUsers !== null && numUsers !== '' ? Number(numUsers) : undefined,
+        contractYears: contractYears !== undefined && contractYears !== null && contractYears !== '' ? Number(contractYears) : undefined,
+        updateUrl: updateUrl || undefined,
+      };
+      const { data, error, provider, html } = await sendEmail({
+        from: branding.from,
+        replyTo: 'billing@quickbooks-solutions.com',
+        to: toEmail,
+        subject: branding.subject,
+        html: renderPaymentFailedEmailHtml(reminderData),
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message || 'Email provider rejected the send' }, { status: 502 });
+      }
+
+      await logEmailSent({
+        type: 'reminder',
+        toEmail,
+        customerName: name,
+        orderId: fallbackOrderId,
+        planDetails,
+        amountUSD: Number(amountDueUSD),
+        subject: branding.subject,
+        trigger: 'admin-manual',
+        providerMessageId: data?.id,
+        provider,
+        html,
+      });
+    } else if (type === 'survey') {
+      const surveyData = {
+        customerName: name === 'there' ? '' : name,
+        toEmail,
+        companyName: companyName || undefined,
+      };
+      const { data, error, provider, html } = await sendEmail({
+        from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
+        replyTo: 'billing@quickbooks-solutions.com',
+        to: toEmail,
+        subject: 'We would like your feedback',
+        html: renderFeedbackEmailHtml(surveyData),
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message || 'Email provider rejected the send' }, { status: 502 });
+      }
+
+      await logEmailSent({
+        type: 'survey',
+        toEmail,
+        customerName: name,
+        orderId: fallbackOrderId,
+        planDetails,
+        amountUSD: 0,
+        subject: 'We would like your feedback',
+        trigger: 'admin-manual',
+        providerMessageId: data?.id,
+        provider,
+        html,
+      });
+    } else if (type === 'query') {
+      const { subject, bodyText } = body;
+      if (!subject || !String(subject).trim()) {
+        return NextResponse.json({ error: 'A subject/title is required' }, { status: 400 });
+      }
+      if (!bodyText || !String(bodyText).trim()) {
+        return NextResponse.json({ error: 'Message body is required' }, { status: 400 });
+      }
+
+      const queryData = {
+        customerName: name === 'there' ? '' : name,
+        toEmail,
+        companyName: companyName || undefined,
+        subject: String(subject).trim(),
+        bodyText: String(bodyText),
+      };
+      const { data, error, provider, html } = await sendEmail({
+        from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
+        replyTo: 'billing@quickbooks-solutions.com',
+        to: toEmail,
+        subject: String(subject).trim(),
+        html: renderQueryEmailHtml(queryData),
+      });
+
+      if (error) {
+        return NextResponse.json({ error: error.message || 'Email provider rejected the send' }, { status: 502 });
+      }
+
+      await logEmailSent({
+        type: 'query',
+        messageBody: String(bodyText),
+        toEmail,
+        customerName: name,
+        orderId: fallbackOrderId,
+        // A query email isn't about a plan. The admin form has no product picker for this type,
+        // but its hidden Product state defaults to Silver, which used to get saved here and show
+        // "QuickBooks Enterprise Silver Edition" on every query row in Email Logs. Never log one.
+        planDetails: undefined,
+        amountUSD: 0,
+        subject: String(subject).trim(),
+        trigger: 'admin-manual',
+        providerMessageId: data?.id,
+        provider,
+        html,
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error('[Send Custom Email] Error:', err);
+    return NextResponse.json({ error: 'Internal server error', message: err.message }, { status: 500 });
+  }
+}

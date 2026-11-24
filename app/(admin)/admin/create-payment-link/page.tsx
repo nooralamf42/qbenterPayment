@@ -26,6 +26,8 @@ import {
   Eye,
   X,
   Search,
+  Mail,
+  MailWarning,
   MessageSquare
 } from 'lucide-react'
 
@@ -49,6 +51,90 @@ function formatEventLabel(event: string): string {
 
 function formatDateKeyInTimeZone(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone }).format(date);
+}
+
+/** Adds whole days to a 'YYYY-MM-DD' key and returns a 'YYYY-MM-DD' key (calendar math in UTC
+ *  noon so DST shifts can't move the result by a day). */
+function addDaysToDateKey(key: string, days: number): string {
+  const d = new Date(`${key}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+
+/** Delivery states reported by Resend. Anything red means the customer did not get the email. */
+const DELIVERY_STATUS_STYLE: Record<string, string> = {
+  delivered:  'bg-green-50 text-green-700 border-green-200',
+  sent:       'bg-blue-50 text-blue-700 border-blue-200',
+  accepted:   'bg-zinc-100 text-zinc-600 border-zinc-200',
+  delayed:    'bg-amber-50 text-amber-700 border-amber-200',
+  bounced:    'bg-red-50 text-red-700 border-red-200',
+  complained: 'bg-red-50 text-red-700 border-red-200',
+  rejected:   'bg-red-50 text-red-700 border-red-200',
+  failed:     'bg-red-50 text-red-700 border-red-200',
+}
+
+const FAILURE_DELIVERY_STATUSES = new Set(['bounced', 'complained', 'rejected', 'failed'])
+
+/** Postal appends "Recipient removed from suppression list" to nearly every successful send's
+ *  detail text unconditionally (confirmed against its own worker logs — it fires even seconds
+ *  apart with no bounce in between), not just when a row was genuinely removed. Stripped here
+ *  since it reads as an alarming event but is really just Postal's own internal bookkeeping. */
+function cleanDeliveryDetail(detail?: string): string {
+  if (!detail) return ''
+  return detail.replace(/\.?\s*Recipient (removed from|added to) suppression list[^.]*\.?/gi, '').trim()
+}
+
+/** Turns a provider's technical failure text (itWALK error codes, Postal SMTP messages) into
+ *  a plain-English reason an admin can act on — "bounced" alone doesn't say whether the
+ *  address is wrong, the domain is a typo, or the recipient's server is just refusing us.
+ *  Matched on the raw detail, before cleanDeliveryDetail strips Postal's suppression note. */
+function explainDeliveryFailure(status?: string, rawDetail?: string): string {
+  const d = rawDetail || ''
+  if (/is on the suppression list/i.test(d)) {
+    return 'Skipped — this address failed repeatedly before, so it is on the block list.'
+  }
+  if (/6037|domain mx not found|no smtp servers were available|no hosts to try|nxdomain/i.test(d)) {
+    return 'The domain has no mail server — the email address is most likely misspelled.'
+  }
+  if (/6006|recipient address is invalid|user unknown|no such user|does not exist|mailbox (not found|unavailable)|address rejected/i.test(d)) {
+    return "This email address doesn't exist (invalid mailbox)."
+  }
+  if (/mailbox full|over quota|quota exceeded/i.test(d)) {
+    return "The recipient's mailbox is full."
+  }
+  if (/spam|blacklist|blocklist|reputation|policy/i.test(d)) {
+    return "Blocked by the recipient's mail server (spam or policy filter)."
+  }
+  if (/6012|permanent (smtp )?delivery error/i.test(d)) {
+    return "The recipient's mail server permanently refused it — the address is probably invalid or blocked."
+  }
+  if (status === 'bounced' || status === 'failed') {
+    return 'Permanently rejected — the address is most likely wrong (the provider gave no further detail).'
+  }
+  return ''
+}
+
+const PROVIDER_STYLE: Record<string, string> = {
+  postal:     'bg-purple-50 text-purple-700 border-purple-200',
+  msg91:      'bg-indigo-50 text-indigo-700 border-indigo-200',
+  itwalk:     'bg-cyan-50 text-cyan-700 border-cyan-200', // historical rows only — provider removed 2026-10-15
+  postmark:   'bg-orange-50 text-orange-700 border-orange-200',
+  zeptomail:  'bg-teal-50 text-teal-700 border-teal-200',
+  maileroo:   'bg-pink-50 text-pink-700 border-pink-200',
+  mailersend: 'bg-lime-50 text-lime-700 border-lime-200',
+  mailpace:   'bg-sky-50 text-sky-700 border-sky-200',
+}
+
+const DELIVERY_STATUS_HINT: Record<string, string> = {
+  accepted:   'The provider accepted the message — this does NOT confirm delivery. A send can still fail after this point (rejected, bounced, or silently blocked) without ever changing this status, depending on the provider and whether its webhook is configured.',
+  sent:       'Handed off to the receiving mail server.',
+  delivered:  'The receiving server accepted it.',
+  delayed:    'Temporarily deferred — the provider is still retrying.',
+  bounced:    'Permanently rejected. The address is usually wrong.',
+  complained: 'Marked as spam by the recipient.',
+  rejected:   'The provider refused the send outright — it never left.',
+  failed:     'Delivery failed.',
 }
 
 function getTodayDateString(timeZone: string): string {
@@ -124,7 +210,7 @@ export default function QuickBooksPaymentLinkCreator() {
 
   const [activeTab, setActiveTab] = useQueryState(
     'tab',
-    parseAsStringLiteral(['create', 'logs'] as const)
+    parseAsStringLiteral(['create', 'logs', 'email', 'sentEmails'] as const)
       .withDefault('create')
       .withOptions({ history: 'replace', clearOnDefault: true })
   )
@@ -145,6 +231,70 @@ export default function QuickBooksPaymentLinkCreator() {
   const [advDateFrom, setAdvDateFrom] = useState('')
   const [advDateTo, setAdvDateTo] = useState('')
   const [logsPerPage, setLogsPerPage] = useState(10)
+
+  /** How recently a prior send to the same address counts as a likely duplicate. */
+  const BULK_HISTORY_DANGER_MS = 7 * 24 * 60 * 60 * 1000
+
+  // Send Email tab state
+  const [emailType, setEmailType] = useState<'success' | 'failed' | 'refund' | 'survey' | 'query'>('success')
+  const [emailForm, setEmailForm] = useState({
+    toEmail: '',
+    customerName: '',
+    companyName: '',
+    orderId: '',
+    planDetails: '',
+    paymentMethodLabel: '',
+    licenseNumber: '',
+    productNumber: '',
+    amountUSD: '',
+    paidAt: getTodayDateString('America/New_York'),
+    amountDueUSD: '',
+    // Reminder defaults: due today, cancellation a week after the due date. Dates are US
+    // Eastern like everywhere else on this dashboard.
+    cancellationDate: addDaysToDateKey(getTodayDateString('America/New_York'), 7),
+    dueDate: getTodayDateString('America/New_York'),
+    // Receipt's optional "Due date" (next billing) — the typical subscription cycle, a month out.
+    receiptDueDate: addDaysToDateKey(getTodayDateString('America/New_York'), 30),
+    refundAmountUSD: '',
+    refundedAt: getTodayDateString('America/New_York'),
+    refundReason: '',
+    // "Query" tab — a free-form message, admin-written subject + body, no NPS scoring.
+    queryTitle: '',
+    queryBody: '',
+  })
+  const [isSendingCustomEmail, setIsSendingCustomEmail] = useState(false)
+  const [reminderGateway, setReminderGateway] = useState<'' | 'authorize' | 'stripe' | 'shopify' | 'shopifySubscription' | 'paydollar'>('')
+  const [emailSubscriptionTier, setEmailSubscriptionTier] = useState('49.87')
+  const EMAIL_SUBSCRIPTION_TIERS = ['49.87', '98.78', '149.10', '198.70', '298.00', '349.89']
+  const [planDetailsIsCustom, setPlanDetailsIsCustom] = useState(false)
+  /** Same prior-send check as the bulk tab, but for one recipient — caught before the send,
+   *  not just visible after in Sent Emails. Keyed off toEmail + emailType so it re-checks
+   *  when either changes. */
+  const [singleSendPrior, setSingleSendPrior] = useState<{ label: string; isRecent: boolean } | null>(null)
+  const [isCheckingSingleHistory, setIsCheckingSingleHistory] = useState(false)
+  const [singleDuplicateConfirming, setSingleDuplicateConfirming] = useState(false)
+  /** Domain-level MX check for the single-recipient form — flags an address like
+   *  "ap@pchtechnoloies.com" (a typo, zero mail servers) before the admin even clicks Send,
+   *  instead of finding out minutes later from a provider bounce. */
+  const [singleEmailDomainInvalid, setSingleEmailDomainInvalid] = useState<string | null>(null)
+
+  // Sent Emails history (emailLogs collection). Paginated server-side — at a few hundred
+  // sends a day the table would otherwise only ever show the newest fraction of one day.
+  const [emailLogsList, setEmailLogsList] = useState<any[]>([])
+  const [emailLogsTotal, setEmailLogsTotal] = useState(0)
+  const [isLoadingEmailLogs, setIsLoadingEmailLogs] = useState(false)
+  const [selectedEmailLog, setSelectedEmailLog] = useState<any>(null)
+  /** Click-to-open detail for a delivery status badge. Fixed-positioned from the click's own
+   *  coordinates because the table sits in an overflow-x-auto wrapper that would clip an
+   *  absolutely-positioned popover. */
+  const [statusPopover, setStatusPopover] = useState<{ entry: any; top: number; left: number } | null>(null)
+  const [emailLogsPage, setEmailLogsPage] = useState(1)
+  const [emailLogsSearch, setEmailLogsSearch] = useState('')
+  const [emailLogsTrigger, setEmailLogsTrigger] = useState('') // '' = all triggers
+  const [emailLogsType, setEmailLogsType] = useState('') // '' = all email types
+  const [emailLogsDateFrom, setEmailLogsDateFrom] = useState('') // 'YYYY-MM-DD' or ''
+  const [emailLogsDateTo, setEmailLogsDateTo] = useState('') // 'YYYY-MM-DD' or ''
+  const [emailLogsPerPage, setEmailLogsPerPage] = useState(20)
 
   const editions = [
     { name: 'Silver', value: 'silver' },
@@ -170,6 +320,284 @@ export default function QuickBooksPaymentLinkCreator() {
     { name: 'QuickBooks Payroll (Monthly Subscription)', value: 'm' },
     { name: 'Outstanding Balance Payment', value: 'n' }
   ]
+
+  const [emailProductCode, setEmailProductCode] = useState('silver')
+  const [emailUsers, setEmailUsers] = useState(1)
+  const [emailYears, setEmailYears] = useState(1)
+  const isEmailProductQbEdition = ['silver', 'gold', 'platinum', 'diamond', 'fsp'].includes(emailProductCode)
+
+  const emailProductDisplayName = (() => {
+    if (isEmailProductQbEdition) {
+      const e = editions.find(ed => ed.value === emailProductCode)
+      return `QuickBooks Enterprise ${e?.name || 'Silver'} Edition`
+    }
+    return customProducts.find(p => p.value === emailProductCode)?.name || ''
+  })()
+
+  const updateEmailForm = (field: string, value: string) => {
+    setEmailForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Keep the email's displayed "Plan / Product Details" text in sync with
+  // the selected product, unless the admin has switched to custom text.
+  useEffect(() => {
+    if (!planDetailsIsCustom) {
+      updateEmailForm('planDetails', emailProductDisplayName)
+    }
+  }, [emailProductCode, planDetailsIsCustom, emailProductDisplayName])
+
+  // Shopify Subscription only offers the fixed Payroll tiers — lock the
+  // product to PAYROLL and the amount to the selected tier so the link
+  // always points at a real, working subscription checkout.
+  useEffect(() => {
+    if (reminderGateway === 'shopifySubscription') {
+      setEmailProductCode('m')
+      setPlanDetailsIsCustom(false)
+      updateEmailForm('amountDueUSD', emailSubscriptionTier)
+    }
+  }, [reminderGateway, emailSubscriptionTier])
+
+  // Builds the same encoded link the Payment Links tab produces — the QB
+  // edition format (needs users/years) or the plain service-code format —
+  // so "Update now" opens a real, working checkout for this exact amount,
+  // product, and gateway.
+  const buildUpdateLink = (amountUSD: number, gateway: 'authorize' | 'stripe' | 'shopify' | 'shopifySubscription' | 'paydollar') => {
+    const gatewayFlag = gateway === 'authorize' ? 'GA' : gateway === 'stripe' ? 'GT' : gateway === 'shopifySubscription' ? 'GSHS' : gateway === 'paydollar' ? 'GPD' : 'GSH'
+    const tStr = Math.round(amountUSD * 100).toString(36)
+
+    let paymentString: string
+    if (isEmailProductQbEdition) {
+      const editionMap: Record<string, string> = { silver: 'S', gold: 'G', platinum: 'P', diamond: 'D', fsp: 'F' }
+      const shortEdition = editionMap[emailProductCode] || 'S'
+      const uStr = emailUsers.toString(36)
+      const yStr = emailYears.toString(36)
+      paymentString = `${uStr}${shortEdition}${yStr}K0M${tStr}${gatewayFlag}`
+    } else {
+      paymentString = `S${emailProductCode}K0M${tStr}${gatewayFlag}`
+    }
+
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    const base = isLocalhost ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || window.location.origin)
+    return `${base}/invoice/${paymentString}`
+  }
+  /** Debounced prior-send check for the single-recipient form — re-runs whenever the
+   *  recipient or email type changes, same 7-day danger window as the bulk tab. */
+  useEffect(() => {
+    setSingleDuplicateConfirming(false)
+    const email = emailForm.toEmail.trim()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSingleSendPrior(null)
+      return
+    }
+
+    const handle = setTimeout(async () => {
+      setIsCheckingSingleHistory(true)
+      try {
+        const stored = localStorage.getItem('adminAuth')
+        const passwordHash = stored ? JSON.parse(stored).passwordHash : ''
+        const res = await fetch('/api/admin/bulk-email-history', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${passwordHash}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ emails: [email], type: emailType === 'success' ? 'receipt' : emailType === 'refund' ? 'refund' : 'reminder' }),
+        })
+        const data = await res.json()
+        const sentAt = res.ok ? data.history?.[email.toLowerCase()] : undefined
+        if (!sentAt) { setSingleSendPrior(null); return }
+        const sentDate = new Date(sentAt)
+        if (isNaN(sentDate.getTime())) { setSingleSendPrior(null); return }
+        const isRecent = Date.now() - sentDate.getTime() < BULK_HISTORY_DANGER_MS
+        const label = formatDateMMDDYYYY(sentDate) + ', ' + sentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+        setSingleSendPrior({ label, isRecent })
+      } catch {
+        setSingleSendPrior(null)
+      } finally {
+        setIsCheckingSingleHistory(false)
+      }
+    }, 500)
+
+    return () => clearTimeout(handle)
+  }, [emailForm.toEmail, emailType])
+
+  /** Debounced MX check for the single-recipient form — same DNS check sendEmail() itself
+   *  runs, just surfaced here before the admin clicks Send rather than after. */
+  useEffect(() => {
+    const email = emailForm.toEmail.trim()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSingleEmailDomainInvalid(null)
+      return
+    }
+
+    const handle = setTimeout(async () => {
+      try {
+        const stored = localStorage.getItem('adminAuth')
+        const passwordHash = stored ? JSON.parse(stored).passwordHash : ''
+        const res = await fetch(`/api/admin/check-email-domain?email=${encodeURIComponent(email)}`, {
+          headers: { 'Authorization': `Bearer ${passwordHash}` },
+        })
+        const data = await res.json()
+        setSingleEmailDomainInvalid(res.ok && data.valid === false ? (data.reason || 'This domain cannot receive email') : null)
+      } catch {
+        setSingleEmailDomainInvalid(null)
+      }
+    }, 500)
+
+    return () => clearTimeout(handle)
+  }, [emailForm.toEmail])
+
+  const sendCustomEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    // A recent duplicate needs an explicit second click — the submit button is swapped
+    // for a "send it again anyway?" confirmation instead of sending straight through.
+    if (singleSendPrior?.isRecent && !singleDuplicateConfirming) {
+      setSingleDuplicateConfirming(true)
+      return
+    }
+    setIsSendingCustomEmail(true)
+    try {
+      const stored = localStorage.getItem('adminAuth')
+      let passwordHash = ''
+      if (stored) {
+        passwordHash = JSON.parse(stored).passwordHash
+      }
+
+      const payload: any = {
+        type: emailType,
+        toEmail: emailForm.toEmail,
+        customerName: emailForm.customerName,
+        companyName: emailForm.companyName,
+        orderId: emailForm.orderId,
+        planDetails: emailForm.planDetails,
+        paymentMethodLabel: emailForm.paymentMethodLabel,
+      }
+
+      if (isEmailProductQbEdition) {
+        payload.numUsers = emailUsers
+        payload.contractYears = emailYears
+      }
+
+      if (emailType === 'success') {
+        payload.amountUSD = emailForm.amountUSD
+        payload.paidAt = emailForm.paidAt
+        payload.licenseNumber = emailForm.licenseNumber
+        payload.productNumber = emailForm.productNumber
+        payload.dueDate = emailForm.receiptDueDate
+      } else if (emailType === 'refund') {
+        payload.refundAmountUSD = emailForm.refundAmountUSD
+        payload.refundedAt = emailForm.refundedAt
+        payload.reason = emailForm.refundReason
+      } else if (emailType === 'failed') {
+        payload.amountDueUSD = emailForm.amountDueUSD
+        payload.cancellationDate = emailForm.cancellationDate
+        payload.dueDate = emailForm.dueDate
+        if (reminderGateway && emailForm.amountDueUSD) {
+          payload.updateUrl = buildUpdateLink(Number(emailForm.amountDueUSD), reminderGateway)
+        }
+      } else if (emailType === 'query') {
+        payload.subject = emailForm.queryTitle
+        payload.bodyText = emailForm.queryBody
+        // Query emails have no product picker — don't send the hidden Product state (defaults to Silver).
+        delete payload.planDetails
+        delete payload.numUsers
+        delete payload.contractYears
+      }
+
+      const response = await fetch('/api/admin/send-custom-email', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${passwordHash}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Send failed')
+      }
+
+      toast.success(emailType === 'success' ? 'Receipt email sent!' : emailType === 'refund' ? 'Refund email sent!' : emailType === 'survey' ? 'Survey email sent!' : emailType === 'query' ? 'Message sent!' : 'Payment reminder sent!')
+      setSingleDuplicateConfirming(false)
+      fetchEmailLogs()
+    } catch (error: any) {
+      console.error(error)
+      toast.error(error.message || 'Failed to send email')
+    } finally {
+      setIsSendingCustomEmail(false)
+    }
+  }
+
+  const fetchEmailLogs = async (page?: number) => {
+    const targetPage = page ?? emailLogsPage
+    setIsLoadingEmailLogs(true)
+    try {
+      const stored = localStorage.getItem('adminAuth')
+      let passwordHash = ''
+      if (stored) {
+        passwordHash = JSON.parse(stored).passwordHash
+      }
+
+      const params = new URLSearchParams({ page: String(targetPage), limit: String(emailLogsPerPage) })
+      if (emailLogsSearch.trim()) params.set('q', emailLogsSearch.trim())
+      if (emailLogsTrigger) params.set('trigger', emailLogsTrigger)
+      if (emailLogsType) params.set('type', emailLogsType)
+      if (emailLogsDateFrom) params.set('dateFrom', emailLogsDateFrom)
+      if (emailLogsDateTo) params.set('dateTo', emailLogsDateTo)
+
+      const response = await fetch(`/api/admin/email-logs?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${passwordHash}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        cache: 'no-store'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch email logs')
+      }
+
+      const data = await response.json()
+      setEmailLogsList(data.logs || [])
+      setEmailLogsTotal(data.total ?? 0)
+      setEmailLogsPage(targetPage)
+    } catch (error: any) {
+      console.error(error)
+      toast.error(error.message || 'Failed to load sent emails')
+    } finally {
+      setIsLoadingEmailLogs(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'sentEmails') {
+      fetchEmailLogs(1)
+    }
+  }, [activeTab])
+
+  // Debounced so every keystroke doesn't fire a request — 400ms is short enough to feel
+  // live without hammering the API while the admin is still typing an address.
+  useEffect(() => {
+    if (activeTab !== 'sentEmails') return
+    const t = setTimeout(() => fetchEmailLogs(1), 400)
+    return () => clearTimeout(t)
+  }, [emailLogsSearch])
+
+  // Trigger and type filters need no debounce — they're selects, not free text.
+  useEffect(() => {
+    if (activeTab === 'sentEmails') fetchEmailLogs(1)
+  }, [emailLogsTrigger, emailLogsType])
+
+  // Date range needs no debounce either — discrete date-picker input, not free text.
+  useEffect(() => {
+    if (activeTab === 'sentEmails') fetchEmailLogs(1)
+  }, [emailLogsDateFrom, emailLogsDateTo])
+
+  // Changing page size makes the current page number potentially meaningless, so jump
+  // back to page 1 rather than trying to preserve scroll position across a resize.
+  useEffect(() => {
+    if (activeTab === 'sentEmails') fetchEmailLogs(1)
+  }, [emailLogsPerPage])
 
   const yearOptions = [
     { value: 1, label: '1 Year' },
@@ -813,6 +1241,8 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
               {[
                 { key: 'create', label: 'Links', title: 'Payment Links', icon: <LinkIcon size={14} /> },
                 { key: 'logs', label: 'Consent', title: 'Consent Logs', icon: <ShieldCheck size={14} className="text-[#2ca01c]" /> },
+                { key: 'email', label: 'Send', title: 'Send Email', icon: <Mail size={14} className="text-[#2ca01c]" /> },
+                { key: 'sentEmails', label: 'Logs', title: 'Email Logs', icon: <MailWarning size={14} className="text-[#2ca01c]" /> },
                 { key: 'surveys', label: 'Surveys', title: 'Surveys', icon: <MessageSquare size={14} className="text-[#2ca01c]" />, href: '/admin/surveys' },
               ].map((tab) => {
                 const base = 'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 sm:px-4 py-2 md:py-1.5 text-xs md:text-sm font-semibold transition-all cursor-pointer select-none'
@@ -829,7 +1259,7 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
                 return (
                   <button
                     key={tab.key}
-                    onClick={() => setActiveTab(tab.key as 'create' | 'logs')}
+                    onClick={() => setActiveTab(tab.key as 'create' | 'logs' | 'email' | 'sentEmails')}
                     title={tab.title}
                     className={`${base} ${activeTab === tab.key ? active : idle}`}
                   >
@@ -1633,6 +2063,817 @@ These Terms are governed by Delaware law and subject to binding dispute arbitrat
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'email' && (
+          <div className="space-y-8">
+          <div className="max-w-2xl">
+            <form onSubmit={sendCustomEmail} className="bg-white border border-zinc-200 rounded-xl shadow-xs p-6 md:p-8 space-y-6">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-900 flex items-center gap-2">
+                  <Mail size={16} className="text-zinc-400" />
+                  Send Transactional Email
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">Fill in the fields and send a receipt, payment reminder, or refund confirmation directly — no existing order required.</p>
+              </div>
+
+              {/* Email type toggle */}
+              <div className="bg-zinc-50 rounded-lg p-4 border border-zinc-200">
+                <label className="block mb-2 font-medium text-xs text-zinc-500 uppercase tracking-wider">Email Type</label>
+                <div className="flex bg-white rounded-md border border-zinc-200 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setEmailType('success')}
+                    className={`flex-1 text-xs font-semibold py-2 rounded transition-colors cursor-pointer ${emailType === 'success' ? 'bg-[#2ca01c] text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                  >
+                    Payment Receipt
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailType('failed')}
+                    className={`flex-1 text-xs font-semibold py-2 rounded transition-colors cursor-pointer ${emailType === 'failed' ? 'bg-amber-500 text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                  >
+                    Payment Reminder
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailType('refund')}
+                    className={`flex-1 text-xs font-semibold py-2 rounded transition-colors cursor-pointer ${emailType === 'refund' ? 'bg-sky-600 text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                  >
+                    Refund
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailType('survey')}
+                    className={`flex-1 text-xs font-semibold py-2 rounded transition-colors cursor-pointer ${emailType === 'survey' ? 'bg-indigo-600 text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                  >
+                    Survey
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailType('query')}
+                    className={`flex-1 text-xs font-semibold py-2 rounded transition-colors cursor-pointer ${emailType === 'query' ? 'bg-purple-600 text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                  >
+                    Query
+                  </button>
+                </div>
+              </div>
+
+              {/* Common fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border-t pt-5 border-zinc-100">
+                <div>
+                  <label className="block mb-1.5 font-semibold text-xs text-zinc-900">
+                    Recipient Email *
+                    {isCheckingSingleHistory && <span className="ml-2 text-[10px] font-normal text-zinc-400">checking prior sends…</span>}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={emailForm.toEmail}
+                    onChange={(e) => updateEmailForm('toEmail', e.target.value)}
+                    placeholder="customer@example.com"
+                    className={`flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 ${singleEmailDomainInvalid ? 'border-red-400 focus:ring-red-300/30' : 'border-[#2ca01c] focus:ring-[#2ca01c]/30'}`}
+                  />
+                  {singleEmailDomainInvalid && (
+                    <p className="mt-1.5 text-[11px] font-semibold text-red-700 flex items-center gap-1.5">
+                      <AlertCircle size={13} className="shrink-0" />
+                      {singleEmailDomainInvalid} — this address will bounce.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block mb-1.5 font-medium text-xs text-zinc-500">Customer Name</label>
+                  <input
+                    type="text"
+                    value={emailForm.customerName}
+                    onChange={(e) => updateEmailForm('customerName', e.target.value)}
+                    placeholder="Jane Doe"
+                    className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1.5 font-medium text-xs text-zinc-500">
+                    Company Name
+                    {emailType === 'survey' && <span className="text-[10px] text-zinc-400 italic font-normal"> (included in the survey link and shown in the email)</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={emailForm.companyName}
+                    onChange={(e) => updateEmailForm('companyName', e.target.value)}
+                    placeholder="Acme Corp"
+                    className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                  />
+                </div>
+                {emailType !== 'survey' && emailType !== 'query' && (
+                  <>
+                <div>
+                  <label className="block mb-1.5 font-medium text-xs text-zinc-500">Order ID <span className="text-[10px] text-zinc-400 italic font-normal">(optional, auto-generated if blank)</span></label>
+                  <input
+                    type="text"
+                    value={emailForm.orderId}
+                    onChange={(e) => updateEmailForm('orderId', e.target.value)}
+                    placeholder="e.g. Mongo _id or invoice #"
+                    className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1.5 font-medium text-xs text-zinc-500">
+                    Product
+                    {reminderGateway === 'shopifySubscription' && (
+                      <span className="text-[10px] text-zinc-400 italic font-normal"> (fixed to Payroll for Shopify Subscription)</span>
+                    )}
+                  </label>
+                  <select
+                    value={emailProductCode}
+                    onChange={(e) => setEmailProductCode(e.target.value)}
+                    disabled={reminderGateway === 'shopifySubscription'}
+                    className={`flex h-10 w-full rounded-md border border-zinc-200 px-3 py-2 text-sm shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c] ${reminderGateway === 'shopifySubscription' ? 'bg-zinc-50 text-zinc-500 cursor-not-allowed' : 'bg-white text-zinc-800 cursor-pointer'}`}
+                  >
+                    <optgroup label="QuickBooks Enterprise">
+                      {editions.map((e) => (
+                        <option key={e.value} value={e.value}>{`QuickBooks Enterprise ${e.name} Edition`}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Custom Products">
+                      {customProducts.map((p) => (
+                        <option key={p.value} value={p.value}>{p.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                {isEmailProductQbEdition && (
+                  <>
+                    <div>
+                      <label className="block mb-1.5 font-medium text-xs text-zinc-500">Number of Users</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={emailUsers}
+                        onChange={(e) => setEmailUsers(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 font-medium text-xs text-zinc-500">Contract Period</label>
+                      <select
+                        value={emailYears}
+                        onChange={(e) => setEmailYears(parseInt(e.target.value))}
+                        className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c] cursor-pointer"
+                      >
+                        <option value={1}>1 Year</option>
+                        <option value={2}>2 Years</option>
+                        <option value={3}>3 Years</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                <div className="md:col-span-2">
+                  <label className="block mb-1.5 font-medium text-xs text-zinc-500">Plan / Product Details <span className="text-[10px] text-zinc-400 italic font-normal">(shown in the email — auto-filled from Product above)</span></label>
+                  {!planDetailsIsCustom ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={emailForm.planDetails}
+                        className="flex h-10 w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 shadow-xs cursor-not-allowed"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPlanDetailsIsCustom(true)}
+                        className="shrink-0 px-3 rounded-md border border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 cursor-pointer"
+                      >
+                        Edit text
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={emailForm.planDetails}
+                        onChange={(e) => updateEmailForm('planDetails', e.target.value)}
+                        placeholder="Type a custom plan/product name"
+                        className="flex h-10 w-full rounded-md border border-[#2ca01c] bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPlanDetailsIsCustom(false)}
+                        className="shrink-0 px-3 rounded-md border border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-50 cursor-pointer"
+                      >
+                        Back to auto
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block mb-1.5 font-medium text-xs text-zinc-500">{emailType === 'refund' ? 'Refund Method Label' : 'Payment Method Label'}</label>
+                  <input
+                    type="text"
+                    value={emailForm.paymentMethodLabel}
+                    onChange={(e) => updateEmailForm('paymentMethodLabel', e.target.value)}
+                    placeholder={emailType === 'success' ? 'e.g. VISA ending in 1234' : emailType === 'refund' ? 'e.g. VISA ending in 1234' : 'e.g. AMEX ending in 6043'}
+                    className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                  />
+                </div>
+                  </>
+                )}
+                {emailType === 'query' && (
+                  <>
+                    <div className="md:col-span-2">
+                      <label className="block mb-1.5 font-semibold text-xs text-zinc-900">Title / Subject *</label>
+                      <input
+                        type="text"
+                        required
+                        value={emailForm.queryTitle}
+                        onChange={(e) => updateEmailForm('queryTitle', e.target.value)}
+                        placeholder="e.g. Following up on your recent order"
+                        className="flex h-10 w-full rounded-md border border-purple-300 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-purple-300/30 focus:border-purple-400"
+                      />
+                      <p className="mt-1 text-[10px] text-zinc-400">Used as both the email subject line and the heading shown in the message.</p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block mb-1.5 font-semibold text-xs text-zinc-900">Message *</label>
+                      <textarea
+                        required
+                        rows={8}
+                        value={emailForm.queryBody}
+                        onChange={(e) => updateEmailForm('queryBody', e.target.value)}
+                        placeholder={"Write the message body here. This appears after the greeting exactly as typed.\n\nLeave a blank line between paragraphs."}
+                        className="flex w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-purple-300/30 focus:border-purple-400 resize-y"
+                      />
+                    </div>
+                  </>
+                )}
+                {emailType === 'success' && (
+                  <>
+                    <div>
+                      <label className="block mb-1.5 font-medium text-xs text-zinc-500">License Number <span className="text-[10px] text-zinc-400 italic font-normal">(optional)</span></label>
+                      <input
+                        type="text"
+                        value={emailForm.licenseNumber}
+                        onChange={(e) => updateEmailForm('licenseNumber', e.target.value)}
+                        placeholder="e.g. 1234-5678-9012-345"
+                        className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 font-medium text-xs text-zinc-500">Product Number <span className="text-[10px] text-zinc-400 italic font-normal">(optional)</span></label>
+                      <input
+                        type="text"
+                        value={emailForm.productNumber}
+                        onChange={(e) => updateEmailForm('productNumber', e.target.value)}
+                        placeholder="e.g. 962-891"
+                        className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Type-specific fields */}
+              {emailType === 'success' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border-t pt-5 border-zinc-100">
+                  <div>
+                    <label className="block mb-1.5 font-semibold text-xs text-zinc-900">Amount Paid ($) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={emailForm.amountUSD}
+                      onChange={(e) => updateEmailForm('amountUSD', e.target.value)}
+                      placeholder="22.05"
+                      className="flex h-10 w-full rounded-md border border-[#2ca01c] bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 font-medium text-xs text-zinc-500">Payment Date</label>
+                    <DateFilterInput
+                      value={emailForm.paidAt}
+                      onChange={(iso) => updateEmailForm('paidAt', iso)}
+                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 font-medium text-xs text-zinc-500">Due Date <span className="text-zinc-300">(optional)</span></label>
+                    <DateFilterInput
+                      value={emailForm.receiptDueDate}
+                      onChange={(iso) => updateEmailForm('receiptDueDate', iso)}
+                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-[#2ca01c]/30 focus:border-[#2ca01c]"
+                    />
+                  </div>
+                </div>
+              ) : emailType === 'refund' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border-t pt-5 border-zinc-100">
+                  <div>
+                    <label className="block mb-1.5 font-semibold text-xs text-zinc-900">Refund Amount ($) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={emailForm.refundAmountUSD}
+                      onChange={(e) => updateEmailForm('refundAmountUSD', e.target.value)}
+                      placeholder="22.05"
+                      className="flex h-10 w-full rounded-md border border-sky-600 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-600/30 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 font-medium text-xs text-zinc-500">Refund Date</label>
+                    <DateFilterInput
+                      value={emailForm.refundedAt}
+                      onChange={(iso) => updateEmailForm('refundedAt', iso)}
+                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-600/30 focus:border-sky-600"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block mb-1.5 font-medium text-xs text-zinc-500">Reason <span className="text-[10px] text-zinc-400 italic font-normal">(optional)</span></label>
+                    <input
+                      type="text"
+                      value={emailForm.refundReason}
+                      onChange={(e) => updateEmailForm('refundReason', e.target.value)}
+                      placeholder="e.g. Duplicate charge"
+                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-600/30 focus:border-sky-600"
+                    />
+                  </div>
+                </div>
+              ) : emailType === 'failed' ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 border-t pt-5 border-zinc-100">
+                  <div>
+                    <label className="block mb-1.5 font-semibold text-xs text-zinc-900">
+                      {reminderGateway === 'shopifySubscription' ? 'Subscription Tier *' : 'Amount Due ($) *'}
+                    </label>
+                    {reminderGateway === 'shopifySubscription' ? (
+                      <select
+                        required
+                        value={emailSubscriptionTier}
+                        onChange={(e) => setEmailSubscriptionTier(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-amber-500 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 font-semibold cursor-pointer"
+                      >
+                        {EMAIL_SUBSCRIPTION_TIERS.map((tier) => (
+                          <option key={tier} value={tier}>${tier} / month</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        value={emailForm.amountDueUSD}
+                        onChange={(e) => updateEmailForm('amountDueUSD', e.target.value)}
+                        placeholder="22.05"
+                        className="flex h-10 w-full rounded-md border border-amber-500 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 font-semibold"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 font-medium text-xs text-zinc-500">Due Date *</label>
+                    <DateFilterInput
+                      value={emailForm.dueDate}
+                      onChange={(iso) => updateEmailForm('dueDate', iso)}
+                      required
+                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 font-medium text-xs text-zinc-500">Cancellation Date *</label>
+                    <DateFilterInput
+                      value={emailForm.cancellationDate}
+                      onChange={(iso) => updateEmailForm('cancellationDate', iso)}
+                      required
+                      className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3 bg-amber-50/60 rounded-lg p-4 border border-amber-200">
+                    <label className="block mb-2 font-medium text-xs text-amber-700 uppercase tracking-wider">"Update now" button link</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-white rounded-md border border-zinc-200 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setReminderGateway('')}
+                        className={`text-xs font-semibold py-2 px-1.5 rounded transition-colors cursor-pointer ${reminderGateway === '' ? 'bg-zinc-700 text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                      >
+                        Contact support
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setReminderGateway('authorize')}
+                        className={`text-xs font-semibold py-2 px-1.5 rounded transition-colors cursor-pointer ${reminderGateway === 'authorize' ? 'bg-[#0075ff] text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                      >
+                        Authorize.net
+                      </button>
+                      {/* STRIPE CURRENTLY DISABLED
+                      <button
+                        type="button"
+                        onClick={() => setReminderGateway('stripe')}
+                        className={`text-xs font-semibold py-2 px-1.5 rounded transition-colors cursor-pointer ${reminderGateway === 'stripe' ? 'bg-[#635bff] text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                      >
+                        Stripe
+                      </button>
+                      */}
+                      {/* SHOPIFY CURRENTLY DISABLED — temporarily off as a payment gateway for
+                          new "Update now" links (2026-10-16). Shopify Subscription is unaffected.
+                      <button
+                        type="button"
+                        onClick={() => setReminderGateway('shopify')}
+                        className={`text-xs font-semibold py-2 px-1.5 rounded transition-colors cursor-pointer ${reminderGateway === 'shopify' ? 'bg-[#95BF47] text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                      >
+                        Shopify
+                      </button>
+                      */}
+                      {/* SHOPIFY SUBSCRIPTION CURRENTLY DISABLED — temporarily off alongside
+                          plain Shopify above (2026-10-16).
+                      <button
+                        type="button"
+                        onClick={() => setReminderGateway('shopifySubscription')}
+                        className={`text-xs font-semibold py-2 px-1.5 rounded transition-colors cursor-pointer ${reminderGateway === 'shopifySubscription' ? 'bg-emerald-600 text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                      >
+                        Shopify Subscription
+                      </button>
+                      */}
+                      <button
+                        type="button"
+                        onClick={() => setReminderGateway('paydollar')}
+                        className={`text-xs font-semibold py-2 px-1.5 rounded transition-colors cursor-pointer ${reminderGateway === 'paydollar' ? 'bg-[#e4002b] text-white shadow-sm' : 'text-zinc-600 hover:bg-zinc-50'}`}
+                      >
+                        PayDollar
+                      </button>
+                    </div>
+
+                    <p className="text-[10px] text-amber-700/80 mt-2 leading-relaxed">
+                      {reminderGateway === 'shopifySubscription'
+                        ? `"Update now" will open a real Shopify recurring checkout for $${emailSubscriptionTier}/month — "QuickBooks Payroll (Monthly Subscription)" — the customer logs in and subscribes like any other invoice link.`
+                        : reminderGateway
+                        ? `"Update now" will open a real ${reminderGateway === 'authorize' ? 'Authorize.net' : reminderGateway === 'paydollar' ? 'PayDollar' : 'Shopify'} checkout for $${emailForm.amountDueUSD || '0.00'} — labeled "${emailProductDisplayName}"${isEmailProductQbEdition ? ` (${emailUsers} user${emailUsers === 1 ? '' : 's'}, ${emailYears} year${emailYears === 1 ? '' : 's'})` : ''} — the customer logs in and pays like any other invoice link.`
+                        : 'No gateway selected — "Update now" will just open a support email instead of a live checkout.'}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {singleSendPrior && (
+                <div className={`rounded-lg p-3 border ${singleSendPrior.isRecent ? 'bg-red-50 border-red-200' : 'bg-zinc-50 border-zinc-200'}`}>
+                  <p className={`text-[11px] font-semibold flex items-center gap-1.5 ${singleSendPrior.isRecent ? 'text-red-700' : 'text-zinc-600'}`}>
+                    {singleSendPrior.isRecent && <AlertCircle size={13} className="shrink-0" />}
+                    {emailType === 'success' ? 'A receipt' : emailType === 'refund' ? 'A refund email' : emailType === 'survey' ? 'A survey email' : emailType === 'query' ? 'A message' : 'A reminder'} was already sent to this address on {singleSendPrior.label}
+                    {singleSendPrior.isRecent ? ' — less than a week ago.' : '.'}
+                  </p>
+                </div>
+              )}
+
+              {singleDuplicateConfirming && (
+                <div className="border border-red-300 bg-red-50 rounded-lg p-4">
+                  <p className="text-xs font-bold text-red-900">Send it again anyway?</p>
+                  <p className="text-[11px] text-red-800 mt-1">
+                    This recipient already got {emailType === 'success' ? 'a receipt' : emailType === 'refund' ? 'a refund email' : emailType === 'survey' ? 'a survey email' : emailType === 'query' ? 'a message' : 'a reminder'} on {singleSendPrior?.label}. This cannot be undone.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="submit"
+                      disabled={isSendingCustomEmail}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {isSendingCustomEmail ? 'Sending…' : 'Yes, send it again'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSingleDuplicateConfirming(false)}
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-zinc-200 text-zinc-700 font-bold rounded-lg text-xs cursor-pointer hover:bg-zinc-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!singleDuplicateConfirming && (
+                <button
+                  type="submit"
+                  disabled={isSendingCustomEmail}
+                  className={`w-full py-2.5 disabled:bg-zinc-100 text-white disabled:text-zinc-400 font-semibold rounded-lg text-xs transition-all cursor-pointer shadow-sm disabled:cursor-not-allowed border border-zinc-950/10 ${emailType === 'success' ? 'bg-[#2ca01c] hover:bg-[#248a18]' : emailType === 'refund' ? 'bg-sky-600 hover:bg-sky-700' : emailType === 'survey' ? 'bg-indigo-600 hover:bg-indigo-700' : emailType === 'query' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-500 hover:bg-amber-600'}`}
+                >
+                  {isSendingCustomEmail ? 'Sending...' : emailType === 'success' ? 'Send Payment Receipt' : emailType === 'refund' ? 'Send Refund Email' : emailType === 'survey' ? 'Send Survey Email' : emailType === 'query' ? 'Send Message' : 'Send Payment Reminder'}
+                </button>
+              )}
+            </form>
+          </div>
+          </div>
+        )}
+
+        {/* Tab: Email Logs — every receipt/reminder ever sent, with delivery + engagement status */}
+        {activeTab === 'sentEmails' && (
+          <div className="space-y-8">
+          {/* Sent Emails history */}
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-xs">
+            <div className="p-6 md:p-8 pb-4 flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-900 flex items-center gap-2">
+                  <Mail size={16} className="text-zinc-400" />
+                  Sent Emails
+                </h2>
+                <p className="text-xs text-zinc-500 mt-0.5">Every receipt and reminder ever sent, automatic or manual, with the data used to build it.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-1 min-w-[160px] md:flex-none">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={emailLogsSearch}
+                    onChange={(e) => setEmailLogsSearch(e.target.value)}
+                    placeholder="Search by email or name…"
+                    className="pl-7 pr-3 py-1.5 border border-zinc-200 rounded-lg text-[11px] w-full md:w-48 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  />
+                </div>
+                <select
+                  value={emailLogsType}
+                  onChange={(e) => setEmailLogsType(e.target.value)}
+                  className="border border-zinc-200 rounded-lg text-[11px] px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
+                >
+                  <option value="">All types</option>
+                  <option value="receipt">Receipt</option>
+                  <option value="reminder">Reminder</option>
+                  <option value="refund">Refund</option>
+                  <option value="survey">Survey</option>
+                  <option value="query">Query</option>
+                </select>
+                <select
+                  value={emailLogsTrigger}
+                  onChange={(e) => setEmailLogsTrigger(e.target.value)}
+                  className="border border-zinc-200 rounded-lg text-[11px] px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
+                >
+                  <option value="">All sources</option>
+                  <option value="admin-bulk">Bulk email</option>
+                  <option value="admin-manual">Manual (Send Email tab)</option>
+                  <option value="admin-order">Payment link order</option>
+                  <option value="authorize-webhook">Authorize webhook</option>
+                  <option value="authorize-sync">Authorize sync</option>
+                  <option value="authorize-complete">Authorize complete</option>
+                </select>
+                <div className="flex items-center gap-1">
+                  <DateFilterInput
+                    value={emailLogsDateFrom}
+                    onChange={setEmailLogsDateFrom}
+                    maxIso={emailLogsDateTo || getTodayDateString('America/New_York')}
+                    className="border border-zinc-200 rounded-lg text-[11px] px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 w-[90px]"
+                  />
+                  <span className="text-zinc-400 text-[10px]">to</span>
+                  <DateFilterInput
+                    value={emailLogsDateTo}
+                    onChange={setEmailLogsDateTo}
+                    maxIso={getTodayDateString('America/New_York')}
+                    className="border border-zinc-200 rounded-lg text-[11px] px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 w-[90px]"
+                  />
+                </div>
+                <select
+                  value={emailLogsPerPage}
+                  onChange={(e) => setEmailLogsPerPage(Number(e.target.value))}
+                  className="border border-zinc-200 rounded-lg text-[11px] px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 cursor-pointer"
+                >
+                  <option value={10}>10 / page</option>
+                  <option value={20}>20 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => fetchEmailLogs(emailLogsPage)}
+                  disabled={isLoadingEmailLogs}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 font-semibold rounded-lg text-[11px] whitespace-nowrap transition-colors shadow-xs bg-white hover:bg-zinc-50 text-zinc-700 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw size={12} className={isLoadingEmailLogs ? 'animate-spin' : ''} />
+                  Refresh
+                </button>
+              </div>
+            </div>
+            <p className="px-6 md:px-8 -mt-2 pb-2 text-[10px] text-zinc-400">
+              MailPace and MailerSend rows update automatically once their webhook is configured — "Check delivery" only re-checks Resend-tracked rows.
+            </p>
+
+            {isLoadingEmailLogs ? (
+              <p className="text-xs text-zinc-400 px-6 md:px-8 pb-8">Loading sent emails...</p>
+            ) : emailLogsList.length === 0 ? (
+              <p className="text-xs text-zinc-400 px-6 md:px-8 pb-8">
+                {(emailLogsSearch.trim() || emailLogsTrigger || emailLogsType || emailLogsDateFrom || emailLogsDateTo)
+                  ? 'No emails match these filters.'
+                  : 'No emails have been sent yet.'}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-t border-zinc-100 bg-zinc-50/60 text-left text-[10px] uppercase tracking-wider text-zinc-500">
+                      <th className="py-2.5 px-4 font-semibold">Sent</th>
+                      <th className="py-2.5 px-4 font-semibold">Type</th>
+                      <th className="py-2.5 px-4 font-semibold">Recipient</th>
+                      <th className="py-2.5 px-4 font-semibold">Plan</th>
+                      <th className="py-2.5 px-4 font-semibold">Amount</th>
+                      <th className="py-2.5 px-4 font-semibold">Trigger</th>
+                      <th className="py-2.5 px-4 font-semibold">Provider</th>
+                      <th className="py-2.5 px-4 font-semibold">Delivery</th>
+                      <th className="py-2.5 px-4 font-semibold">Engagement</th>
+                      <th className="py-2.5 px-4 font-semibold text-right">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {emailLogsList.map((entry) => (
+                      <tr key={entry._id} className="hover:bg-zinc-50/40 transition-colors">
+                        <td className="py-3 px-4 align-top whitespace-nowrap text-zinc-500">
+                          {entry.sentAt ? formatDateMMDDYYYY(entry.sentAt, 'America/New_York') : 'N/A'}
+                          <div className="text-[10px] text-zinc-400">{entry.sentAt ? new Date(entry.sentAt).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' }) + ' EST' : ''}</div>
+                        </td>
+                        <td className="py-3 px-4 align-top">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border ${entry.type === 'reminder' ? 'bg-amber-50 text-amber-700 border-amber-200' : entry.type === 'refund' ? 'bg-sky-50 text-sky-700 border-sky-200' : entry.type === 'query' ? 'bg-purple-50 text-purple-700 border-purple-200' : entry.type === 'survey' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                            {entry.type === 'reminder' ? 'REMINDER' : entry.type === 'refund' ? 'REFUND' : entry.type === 'query' ? 'QUERY' : entry.type === 'survey' ? 'SURVEY' : 'RECEIPT'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 align-top">
+                          <div className="font-semibold text-zinc-900">{entry.customerName || '—'}</div>
+                          <div className="text-zinc-500">{entry.toEmail}</div>
+                        </td>
+                        <td className="py-3 px-4 align-top text-zinc-600 max-w-[220px] truncate" title={entry.planDetails}>{entry.planDetails || '—'}</td>
+                        <td className="py-3 px-4 align-top font-semibold text-zinc-800">{entry.type !== 'query' && entry.type !== 'survey' && entry.amountUSD !== undefined && entry.amountUSD !== null ? `$${Number(entry.amountUSD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</td>
+                        <td className="py-3 px-4 align-top">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200">
+                            {entry.trigger || 'unknown'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 align-top">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border ${PROVIDER_STYLE[entry.provider] || 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
+                            {(entry.provider || 'unknown').toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 align-top">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              setStatusPopover({
+                                entry,
+                                top: rect.bottom + 6,
+                                left: Math.max(8, Math.min(rect.left, window.innerWidth - 348)),
+                              })
+                            }}
+                            title="Click for details"
+                            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border cursor-pointer hover:brightness-95 ${DELIVERY_STATUS_STYLE[entry.deliveryStatus] || 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}
+                          >
+                            {(entry.deliveryStatus || 'unknown').toUpperCase()}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 align-top">
+                          {entry.clickedAt ? (
+                            <span title={`Clicked ${entry.clickCount || 1}×${entry.lastClickedUrl ? ' — ' + entry.lastClickedUrl : ''}`}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border bg-blue-50 text-blue-700 border-blue-200">
+                              CLICKED
+                            </span>
+                          ) : entry.openedAt ? (
+                            <span title={`Opened ${entry.openCount || 1}×`}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border bg-indigo-50 text-indigo-700 border-indigo-200">
+                              OPENED
+                            </span>
+                          ) : (
+                            <span className="text-zinc-300">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 align-top text-right whitespace-nowrap space-x-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedEmailLog(entry)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 border border-blue-200 font-semibold rounded-md text-[10px] transition-colors shadow-xs bg-white hover:bg-blue-50 text-blue-700 cursor-pointer"
+                          >
+                            <Eye size={11} />
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!isLoadingEmailLogs && emailLogsTotal > emailLogsPerPage && (
+              <div className="flex items-center justify-between border-t border-zinc-100 px-6 md:px-8 py-4">
+                <button
+                  type="button"
+                  onClick={() => fetchEmailLogs(Math.max(emailLogsPage - 1, 1))}
+                  disabled={emailLogsPage === 1}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold border border-zinc-200 rounded-lg bg-white hover:bg-zinc-50 disabled:opacity-50 text-zinc-700 shadow-xs transition-colors cursor-pointer"
+                >
+                  <ChevronLeft size={14} /> Previous
+                </button>
+                <span className="text-xs text-zinc-500 font-semibold bg-zinc-50 px-3 py-1.5 rounded-md border border-zinc-200/50">
+                  Page {emailLogsPage} of {Math.ceil(emailLogsTotal / emailLogsPerPage)} — {emailLogsTotal} email{emailLogsTotal === 1 ? '' : 's'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fetchEmailLogs(Math.min(emailLogsPage + 1, Math.ceil(emailLogsTotal / emailLogsPerPage)))}
+                  disabled={emailLogsPage === Math.ceil(emailLogsTotal / emailLogsPerPage)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold border border-zinc-200 rounded-lg bg-white hover:bg-zinc-50 disabled:opacity-50 text-zinc-700 shadow-xs transition-colors cursor-pointer"
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+          </div>
+        )}
+
+        {statusPopover && (() => {
+          const e = statusPopover.entry
+          const isFailure = FAILURE_DELIVERY_STATUSES.has(e.deliveryStatus)
+          const reason = explainDeliveryFailure(e.deliveryStatus, e.deliveryDetail)
+          const original = cleanDeliveryDetail(e.deliveryDetail)
+          return (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setStatusPopover(null)} />
+              <div
+                className="fixed z-50 w-[340px] max-w-[calc(100vw-16px)] bg-white border border-zinc-200 rounded-xl shadow-xl p-4 text-xs"
+                style={{ top: statusPopover.top, left: statusPopover.left }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold border ${DELIVERY_STATUS_STYLE[e.deliveryStatus] || 'bg-zinc-100 text-zinc-500 border-zinc-200'}`}>
+                    {(e.deliveryStatus || 'unknown').toUpperCase()}
+                  </span>
+                  <button type="button" onClick={() => setStatusPopover(null)} className="text-zinc-400 hover:text-zinc-800 cursor-pointer">
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Reason</p>
+                <p className={`font-medium leading-relaxed ${isFailure ? 'text-red-700' : 'text-zinc-800'}`}>
+                  {reason || DELIVERY_STATUS_HINT[e.deliveryStatus] || 'No further detail from the provider.'}
+                </p>
+
+                {original && (
+                  <>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mt-3 mb-1">Original message</p>
+                    <p className="font-mono text-[10px] text-zinc-600 bg-zinc-50 border border-zinc-100 rounded-md p-2 break-words">
+                      {original}
+                    </p>
+                  </>
+                )}
+
+                {e.statusUpdatedAt && (
+                  <p className="text-[10px] text-zinc-400 mt-3">
+                    Updated {new Date(e.statusUpdatedAt).toLocaleString('en-US', { timeZone: 'America/New_York' })} EST
+                  </p>
+                )}
+              </div>
+            </>
+          )
+        })()}
+
+        {selectedEmailLog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg relative flex flex-col" style={{ maxHeight: '90vh' }}>
+              <button
+                onClick={() => setSelectedEmailLog(null)}
+                className="absolute top-4 right-4 z-10 text-zinc-400 hover:text-zinc-800 transition-colors p-1 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-zinc-200"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="overflow-y-auto flex-1 p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6 border-b border-zinc-100 pb-4">
+                  <h2 className="text-lg font-bold text-zinc-900">Email Data Used</h2>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${selectedEmailLog.type === 'reminder' ? 'bg-amber-50 text-amber-700 border-amber-200' : selectedEmailLog.type === 'refund' ? 'bg-sky-50 text-sky-700 border-sky-200' : selectedEmailLog.type === 'query' ? 'bg-purple-50 text-purple-700 border-purple-200' : selectedEmailLog.type === 'survey' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                    {selectedEmailLog.type === 'reminder' ? 'REMINDER' : selectedEmailLog.type === 'refund' ? 'REFUND' : selectedEmailLog.type === 'query' ? 'QUERY' : selectedEmailLog.type === 'survey' ? 'SURVEY' : 'RECEIPT'}
+                  </span>
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  {[
+                    ['Sent at', selectedEmailLog.sentAt ? new Date(selectedEmailLog.sentAt).toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' EST' : 'N/A'],
+                    ['Subject', selectedEmailLog.subject],
+                    ['Recipient email', selectedEmailLog.toEmail],
+                    ['Customer name', selectedEmailLog.customerName],
+                    ['Order ID', selectedEmailLog.orderId],
+                    ['Plan details', selectedEmailLog.planDetails],
+                    ['Amount (USD)', selectedEmailLog.type !== 'query' && selectedEmailLog.type !== 'survey' && selectedEmailLog.amountUSD !== undefined && selectedEmailLog.amountUSD !== null ? `$${Number(selectedEmailLog.amountUSD).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined],
+                    ['Trigger', selectedEmailLog.trigger],
+                    ['Record ID', selectedEmailLog._id],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex justify-between gap-4 border-b border-zinc-50 pb-2">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider shrink-0 pt-0.5">{label}</span>
+                      <span className="font-medium text-zinc-800 text-right break-words">{value || <span className="text-zinc-300 italic">Not provided</span>}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-zinc-100 flex justify-end gap-2">
+                <button
+                  onClick={() => setSelectedEmailLog(null)}
+                  className="px-5 py-2 bg-zinc-900 text-white font-semibold rounded-lg hover:bg-zinc-800 transition-colors shadow-sm text-sm cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
