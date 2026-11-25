@@ -88,11 +88,11 @@ export default function PaymentSuccessPage() {
           <div className="mt-4 text-sm text-gray-500">
             <p className="mb-1">Need help with your order?</p>
             <a
-              href="mailto:billing@quickbooks-enterprises.com"
+              href="mailto:contact@qbenterprise.us"
               className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
             >
               <MailIcon className="w-4 h-4" />
-              billing@quickbooks-enterprises.com
+              contact@qbenterprise.us
             </a>
           </div>
         </div>

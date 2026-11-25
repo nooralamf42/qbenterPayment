@@ -14,7 +14,7 @@ const BRAND_GREEN = '#2ca01c';
 const SUCCESS_ICON_URL = `${BASE_URL}/email-success-check.svg`;
 const ALERT_ICON_URL = `${BASE_URL}/email-alert.svg`;
 
-const SUPPORT_MAILTO = 'mailto:billing@quickbooks-solutions.com';
+const SUPPORT_MAILTO = 'mailto:contact@qbenterprise.us';
 const SUPPORT_TEL = 'tel:+18888298848';
 
 /** Every reminder sends as "Intuit QuickBooks", not "QuickBooks Enterprise" — that part is

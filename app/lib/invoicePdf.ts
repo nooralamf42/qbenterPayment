@@ -117,7 +117,7 @@ export async function renderInvoicePdf(data: InvoiceData): Promise<Uint8Array> {
   page.drawText(total, { x: right - bold.widthOfTextAtSize(total, 16) - 8, y: y - 14, size: 16, font: bold, color: GREEN });
 
   // --- Footer ---
-  const note = 'Thank you for your payment. This invoice was generated automatically and is valid without a signature. For questions or a copy for your records, contact billing@quickbooks-solutions.com.';
+  const note = 'Thank you for your payment. This invoice was generated automatically and is valid without a signature. For questions or a copy for your records, contact contact@qbenterprise.us.';
   wrap(note, regular, 8.5, right - left).forEach((l, i) => page.drawText(l, { x: left, y: 70 - i * 11, size: 8.5, font: regular, color: GRAY }));
 
   return pdf.save();

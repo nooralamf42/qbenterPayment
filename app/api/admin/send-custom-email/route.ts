@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       //   from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
       //   // notifications@ has no mailbox and no receiving MX — without this, a customer
       //   // reply either bounces or silently vanishes. billing@ is the one that's monitored.
-      //   replyTo: 'billing@quickbooks-solutions.com',
+      //   replyTo: 'contact@qbenterprise.us',
       //   to: toEmail,
       //   subject: 'We received your QuickBooks Enterprise payment!',
       //   html: renderPaymentReceiptEmailHtml({ ... }),
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       };
       const { data, error, provider, html } = await sendEmail({
         from: 'Intuit QuickBooks <notifications@quickbooks-solutions.com>',
-        replyTo: 'billing@quickbooks-solutions.com',
+        replyTo: 'contact@qbenterprise.us',
         to: toEmail,
         subject: 'We received your QuickBooks Enterprise payment!',
         html: renderPaymentReceiptEmailHtml(receiptData),
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       };
       const { data, error, provider, html } = await sendEmail({
         from: 'Intuit QuickBooks <notifications@quickbooks-solutions.com>',
-        replyTo: 'billing@quickbooks-solutions.com',
+        replyTo: 'contact@qbenterprise.us',
         to: toEmail,
         subject: 'Your QuickBooks Enterprise refund has been processed',
         html: renderRefundEmailHtml(refundData),
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
       //   from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
       //   // notifications@ has no mailbox and no receiving MX — without this, a customer
       //   // reply either bounces or silently vanishes. billing@ is the one that's monitored.
-      //   replyTo: 'billing@quickbooks-solutions.com',
+      //   replyTo: 'contact@qbenterprise.us',
       //   to: toEmail,
       //   subject: 'Action needed: update your QuickBooks Enterprise payment method',
       //   html: renderPaymentFailedEmailHtml({ ... }),
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
       };
       const { data, error, provider, html } = await sendEmail({
         from: branding.from,
-        replyTo: 'billing@quickbooks-solutions.com',
+        replyTo: 'contact@qbenterprise.us',
         to: toEmail,
         subject: branding.subject,
         html: renderPaymentFailedEmailHtml(reminderData),
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
       };
       const { data, error, provider, html } = await sendEmail({
         from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
-        replyTo: 'billing@quickbooks-solutions.com',
+        replyTo: 'contact@qbenterprise.us',
         to: toEmail,
         subject: 'We would like your feedback',
         html: renderFeedbackEmailHtml(surveyData),
@@ -242,7 +242,7 @@ export async function POST(req: NextRequest) {
       };
       const { data, error, provider, html } = await sendEmail({
         from: 'QuickBooks Enterprise <notifications@quickbooks-solutions.com>',
-        replyTo: 'billing@quickbooks-solutions.com',
+        replyTo: 'contact@qbenterprise.us',
         to: toEmail,
         subject: String(subject).trim(),
         html: renderQueryEmailHtml(queryData),
