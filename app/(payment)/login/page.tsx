@@ -102,11 +102,14 @@ const LoginPage = ({ onNext }: { onNext: (email: string) => void }) => {
                         </>
                     ) : (
                         <>
-                            By selecting Sign in for your Intuit Account, you agree to our{' '}
-                            <Link href="https://www.intuit.com/legal/terms/en-us/website/" className='text-blue-600 hover:text-blue-800'>
+                            {/* Our own /terms and /privacy, not intuit.com. These links used to
+                                point at Intuit's legal pages, which implied Intuit's terms govern a
+                                purchase from us — the opposite of the disclaimer directly below. */}
+                            By selecting Sign in, you agree to our{' '}
+                            <Link href="/terms" target="_blank" className='text-blue-600 hover:text-blue-800'>
                                 Terms
                             </Link>. Our{' '}
-                            <Link className='text-blue-600 hover:text-blue-800' href="https://www.intuit.com/privacy/">
+                            <Link className='text-blue-600 hover:text-blue-800' href="/privacy" target="_blank">
                                 Privacy Policy
                             </Link>{' '}
                             applies to your personal data.
