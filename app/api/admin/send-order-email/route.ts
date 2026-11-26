@@ -4,13 +4,11 @@ import { ObjectId } from 'mongodb';
 import { sendEmail } from '@/app/lib/emailSender';
 import { renderPaymentReceiptEmailHtml, renderPaymentFailedEmailHtml } from '@/app/lib/emailTemplates';
 import { logEmailSent } from '@/app/lib/emailLog';
+import { isAdminAuthorized } from '@/app/lib/adminAuth';
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    const expectedPass = process.env.NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD;
-
-    if (!authHeader || authHeader !== `Bearer ${expectedPass}`) {
+    if (!isAdminAuthorized(req)) {
       return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 });
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectToDatabase } from '@/app/lib/mongodb';
+import { isAdminAuthorized } from '@/app/lib/adminAuth';
 
 /** Returns the email behind one Email Logs row, so the admin can see what was actually sent.
  *
@@ -12,10 +13,7 @@ import { connectToDatabase } from '@/app/lib/mongodb';
  *  Excluded from the list query because it is ~18 KB a row; this is the per-row fetch. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    const expectedPass = process.env.NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD;
-
-    if (!authHeader || authHeader !== `Bearer ${expectedPass}`) {
+    if (!isAdminAuthorized(req)) {
       return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 });
     }
 

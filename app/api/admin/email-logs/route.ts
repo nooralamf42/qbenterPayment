@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/app/lib/mongodb';
 import { ensureEmailLogIndexes } from '@/app/lib/emailLog';
+import { isAdminAuthorized } from '@/app/lib/adminAuth';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -44,10 +45,7 @@ function zonedDateTimeToUtc(dateStr: string, time: string, timeZone: string): Da
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    const expectedPass = process.env.NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD;
-
-    if (!authHeader || authHeader !== `Bearer ${expectedPass}`) {
+    if (!isAdminAuthorized(req)) {
       return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 });
     }
 

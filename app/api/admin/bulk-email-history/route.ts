@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/app/lib/mongodb';
+import { isAdminAuthorized } from '@/app/lib/adminAuth';
 
 /** Looks up the most recent send of a given type for each email in a bulk batch, so the
  *  admin can see "this person already got a reminder 2 days ago" before sending another one
  *  — rather than finding out only after a customer complains about a duplicate. */
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    const expectedPass = process.env.NEXT_PUBLIC_ENCODED_ADMIN_PASSWORD;
-    if (!authHeader || authHeader !== `Bearer ${expectedPass}`) {
+    if (!isAdminAuthorized(req)) {
       return NextResponse.json({ error: 'Unauthorized access' }, { status: 401 });
     }
 
