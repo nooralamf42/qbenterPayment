@@ -103,6 +103,12 @@ function emailHeader(): string {
   // navy). Served as PNG, not WebP: several mail clients (including
   // Gmail's own image proxy) fail to decode WebP correctly and render
   // corrupted/garbled pixels instead of a clean image.
+  //
+  // Generated for this project rather than copied from quickbooks-interprises: the file of
+  // this name there is a 1080x40 strip of four small third-party icons, nothing like what the
+  // description above calls for, so copying it would have put a row of unrelated logos in the
+  // header. Hosted rather than inlined, same as the status icons, because clients that strip
+  // base64 images still fetch a URL.
   return `
     <table border="0" cellpadding="0" cellspacing="0" width="100%" align="center" bgcolor="${BRAND_NAVY}" style="width:100%;max-width:660px;text-align:center;background-color:${BRAND_NAVY}">
       <tr>
